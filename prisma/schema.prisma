@@ -1,0 +1,135 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String     @id @default(cuid())
+  cedula            String     @default("1000000000")
+  name              String
+  email             String     @unique
+  password          String     @default("123456")
+  role              String     @default("ASESOR") // ADMIN, ASESOR, BACKOFFICE
+  active            Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  sales             Sale[]     @relation("AdvisorSales")
+  validatedSales    Sale[]     @relation("ValidatedSales")
+  lockedSales       Sale[]     @relation("LockedSales")
+  auditLogs         AuditLog[]
+  assignedCampaigns Campaign[] @relation("UserAssignedCampaigns")
+}
+
+model Campaign {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  color         String   @default("#0284c7")
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  plans         Plan[]
+  sales         Sale[]
+  assignedUsers User[]   @relation("UserAssignedCampaigns")
+}
+
+model Plan {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name       String
+  price      Float
+  features   String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  sales      Sale[]
+}
+
+model Sale {
+  id                     String     @id @default(cuid())
+  campaignId             String
+  campaign               Campaign   @relation(fields: [campaignId], references: [id])
+  planId                 String
+  plan                   Plan       @relation(fields: [planId], references: [id])
+  advisorId              String
+  advisor                User       @relation("AdvisorSales", fields: [advisorId], references: [id])
+  validatorId            String?
+  validator              User?      @relation("ValidatedSales", fields: [validatorId], references: [id])
+
+  // Bloqueo en tiempo real para concurrencia de Back Office
+  lockedById             String?
+  lockedBy               User?      @relation("LockedSales", fields: [lockedById], references: [id])
+  lockedByName           String?
+  lockedAt               DateTime?
+
+  // Datos de Identificación y Cliente
+  documentType           String     @default("Cédula") // "NIT" | "Cédula"
+  clientCedula           String     // Número de documento
+  clientName             String     // Nombre cliente
+  legalRepCedula         String?    // Cédula de representante legal
+
+  // Ubicación y Contacto
+  address                String?    // Dirección
+  neighborhood           String?    // Barrio
+  department             String?    // Departamento
+  city                   String?    // Ciudad
+  contactName            String?    // Contacto
+  clientPhone            String?    // Número de contacto 1 (numérico)
+  contactPhone2          String?    // Número de contacto 2 (numérico)
+  clientEmail            String?    // Correo electrónico (con @ obligatorio)
+
+  // Datos Comerciales y Técnicos de la Venta
+  otMin                  String?    // OT/MIN (numérico)
+  acquiredServices       String?    // Servicios adquiridos
+  recurrent              String?    // Recurrente
+  saleValue              Float      // CFM con IVA (valor del plan ofrecido)
+  nip                    String?    // NIP
+  contractNumber         String?    // Número de contrato
+  contractType           String?    // "Firmado" | "Grabado" | "Venta Digital"
+  validationMethod       String?    // "Claro Safe" | "ID Visión Biométrico" | "Venta Digital"
+  identityValidationDate String?    // Fecha de validación de identidad (YYYY-MM-DD)
+  otpLine                String?    // Línea OTP realizada
+  otpCode                String?    // Número OTP confirmado
+  saleType               String?    // "Migración" | "Línea Nueva" | "Portabilidad"
+  databaseName           String?    // Nombre de la base
+  externalId             String?    // ID
+  observation            String?    // Observación del consultor
+
+  // Gestión de Back Office (Estados: PENDIENTE_BACKOFFICE, PREACTIVO, ENVIO_SIM, ACTIVO, DEVOLUCION)
+  stage                  String     @default("PENDIENTE_BACKOFFICE")
+  backofficeName         String?    // Nombre del Back Office que realiza el proceso
+  radicado               String?    // Radicado asignado por Back Office
+  backofficeObservation  String?    // Observación del Back Office
+  preactivationDate      String?    // Fecha de preactivación (YYYY-MM-DD)
+  simSentDate            String?    // Fecha de envío de la SIM (YYYY-MM-DD)
+  activationDate         String?    // Fecha de activación (YYYY-MM-DD)
+  activationMonth        String?    // Mes de activación (ej. "Septiembre 2026")
+  returnReason           String?    // Causal / observación cuando pasa a DEVOLUCION
+
+  // Documentación Adjunta
+  documentUrl            String?
+  documentName           String?
+  documentCedulaUrl      String?
+  documentCedulaName     String?
+  documentUtilityUrl     String?
+  documentUtilityName    String?
+
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  auditLogs              AuditLog[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  comment   String?
+  timestamp DateTime @default(now())
+}

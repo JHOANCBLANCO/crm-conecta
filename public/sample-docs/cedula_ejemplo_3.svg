@@ -1,0 +1,22 @@
+<svg width="600" height="380" viewBox="0 0 600 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="380" rx="16" fill="#F8FAFC" stroke="#F59E0B" stroke-width="3" stroke-dasharray="8 4"/>
+  <rect x="20" y="20" width="560" height="60" rx="8" fill="#78350F"/>
+  <text x="40" y="48" fill="#FEF3C7" font-family="Arial, sans-serif" font-weight="bold" font-size="18">REPÚBLICA DE COLOMBIA (DOCUMENTO DEVUELTO: ILEGIBLE)</text>
+  <text x="40" y="68" fill="#FDE68A" font-family="Arial, sans-serif" font-size="12">IDENTIFICACIÓN PERSONAL - REVERSO BORROSO</text>
+  
+  <rect x="40" y="105" width="130" height="170" rx="8" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+  <circle cx="105" cy="165" r="35" fill="#D97706" opacity="0.4"/>
+  <text x="60" y="295" fill="#B45309" font-family="Arial, sans-serif" font-size="11">FOTO BORROSA</text>
+
+  <text x="200" y="125" fill="#92400E" font-family="Arial, sans-serif" font-size="11" font-weight="bold">NÚMERO DE CÉDULA</text>
+  <text x="200" y="150" fill="#78350F" font-family="Arial, sans-serif" font-size="22" font-weight="bold" letter-spacing="2">79.845.123</text>
+
+  <text x="200" y="185" fill="#92400E" font-family="Arial, sans-serif" font-size="11" font-weight="bold">APELLIDOS Y NOMBRES</text>
+  <text x="200" y="205" fill="#78350F" font-family="Arial, sans-serif" font-size="16" font-weight="bold">PEÑA RODRIGO ALBERTO</text>
+
+  <text x="200" y="240" fill="#DC2626" font-family="Arial, sans-serif" font-size="12" font-weight="bold">OBSERVACIÓN BACK OFFICE:</text>
+  <text x="200" y="260" fill="#991B1B" font-family="Arial, sans-serif" font-size="13">Fecha de expedición no legible en el reverso.</text>
+
+  <rect x="20" y="325" width="560" height="35" rx="6" fill="#78350F"/>
+  <text x="35" y="348" fill="#FDE68A" font-family="monospace" font-size="14" letter-spacing="3">IDCOL79845123<<<<<<<<<<<<<<<<1</text>
+</svg>

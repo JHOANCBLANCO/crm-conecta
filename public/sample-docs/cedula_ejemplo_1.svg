@@ -1,0 +1,35 @@
+<svg width="600" height="380" viewBox="0 0 600 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="380" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="20" y="20" width="560" height="60" rx="8" fill="#1E293B"/>
+  <text x="40" y="48" fill="#F8FAFC" font-family="Arial, sans-serif" font-weight="bold" font-size="18">REPÚBLICA DE COLOMBIA</text>
+  <text x="40" y="68" fill="#94A3B8" font-family="Arial, sans-serif" font-size="12">IDENTIFICACIÓN PERSONAL - CÉDULA DE CIUDADANÍA</text>
+  
+  <!-- Photo placeholder -->
+  <rect x="40" y="105" width="130" height="170" rx="8" fill="#E2E8F0" stroke="#94A3B8" stroke-width="2"/>
+  <circle cx="105" cy="165" r="35" fill="#94A3B8"/>
+  <path d="M60 255C60 225 80 215 105 215C130 215 150 225 150 255H60Z" fill="#94A3B8"/>
+  <text x="75" y="295" fill="#64748B" font-family="Arial, sans-serif" font-size="11">FOTO TITULAR</text>
+
+  <!-- Info -->
+  <text x="200" y="125" fill="#64748B" font-family="Arial, sans-serif" font-size="11" font-weight="bold">NÚMERO DE CÉDULA</text>
+  <text x="200" y="150" fill="#0F172A" font-family="Arial, sans-serif" font-size="22" font-weight="bold" letter-spacing="2">1.018.459.201</text>
+
+  <text x="200" y="185" fill="#64748B" font-family="Arial, sans-serif" font-size="11" font-weight="bold">APELLIDOS Y NOMBRES</text>
+  <text x="200" y="205" fill="#0F172A" font-family="Arial, sans-serif" font-size="16" font-weight="bold">RESTREPO JUAN FERNANDO</text>
+
+  <text x="200" y="240" fill="#64748B" font-family="Arial, sans-serif" font-size="11" font-weight="bold">FECHA DE EXPEDICIÓN</text>
+  <text x="200" y="258" fill="#0F172A" font-family="Arial, sans-serif" font-size="14">14-MAR-2015</text>
+
+  <text x="370" y="240" fill="#64748B" font-family="Arial, sans-serif" font-size="11" font-weight="bold">LUGAR DE EXPEDICIÓN</text>
+  <text x="370" y="258" fill="#0F172A" font-family="Arial, sans-serif" font-size="14">BOGOTÁ D.C.</text>
+
+  <!-- Fingerprint / Watermark -->
+  <rect x="470" y="105" width="90" height="120" rx="6" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <circle cx="515" cy="165" r="28" fill="none" stroke="#64748B" stroke-width="2" stroke-dasharray="4 2"/>
+  <circle cx="515" cy="165" r="18" fill="none" stroke="#64748B" stroke-width="2" stroke-dasharray="3 2"/>
+  <text x="480" y="240" fill="#64748B" font-family="Arial, sans-serif" font-size="10">HUELLA ÍNDICE</text>
+
+  <!-- Footer security bar -->
+  <rect x="20" y="325" width="560" height="35" rx="6" fill="#0F172A"/>
+  <text x="35" y="348" fill="#38BDF8" font-family="monospace" font-size="14" letter-spacing="3">IDCOL1018459201<<<<<<<<<<<<<<8</text>
+</svg>
