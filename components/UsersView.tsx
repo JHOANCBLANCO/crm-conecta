@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { UserPlus, Edit, Users as UsersIcon, Shield, FileCheck2, Briefcase } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { formatDate, generateUsername } from '@/lib/utils';
 import { User } from './Navbar';
 
 interface Campaign {
@@ -37,12 +37,24 @@ export default function UsersView({
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editCedula, setEditCedula] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editCampaignIds, setEditCampaignIds] = useState<string[]>([]);
   const [isUpdatingCampaigns, setIsUpdatingCampaigns] = useState(false);
+
+  const existingUsernames = users.map((u) => u.email);
+
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    const autoUser = generateUsername(newName, existingUsernames);
+    setEmail(autoUser);
+  };
 
   const handleOpenEditCampaigns = (u: User) => {
     setEditingUser(u);
     setEditCedula(u.cedula || '');
+    setEditName(u.name || '');
+    setEditEmail((u.email || '').split('@')[0]);
     const ids = u.assignedCampaigns?.map((c) => c.id) || [];
     setEditCampaignIds(ids);
   };
@@ -57,6 +69,8 @@ export default function UsersView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cedula: editCedula,
+          name: editName.trim(),
+          email: editEmail.trim().toLowerCase().split('@')[0],
           assignedCampaignIds: editCampaignIds,
         }),
       });
@@ -84,7 +98,7 @@ export default function UsersView({
         body: JSON.stringify({
           cedula: cedula.trim(),
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: email.trim().toLowerCase().split('@')[0],
           password: password || '123456',
           role,
           assignedCampaignIds: selectedCampaignIds,
@@ -157,9 +171,9 @@ export default function UsersView({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
               <tr>
+                <th className="py-3.5 px-4">Nombre</th>
                 <th className="py-3.5 px-4">Usuario</th>
                 <th className="py-3.5 px-4">Documento</th>
-                <th className="py-3.5 px-4">Correo</th>
                 <th className="py-3.5 px-4">Rol</th>
                 <th className="py-3.5 px-4">Campañas</th>
                 <th className="py-3.5 px-4">Registro</th>
@@ -181,11 +195,13 @@ export default function UsersView({
                         <span className="font-bold text-slate-900">{u.name}</span>
                       </div>
                     </td>
+                    <td className="py-3.5 px-4">
+                      <span className="font-mono text-xs font-semibold text-sky-700 bg-sky-50 border border-sky-100 px-2.5 py-1 rounded-lg">
+                        {(u.email || '').split('@')[0]}
+                      </span>
+                    </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       {u.cedula || '—'}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600">
-                      {u.email}
                     </td>
                     <td className="py-3.5 px-4">
                       <span
@@ -249,6 +265,39 @@ export default function UsersView({
             </div>
 
             <form onSubmit={handleSaveCampaigns} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nombre completo *
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditName(val);
+                    const otherUsernames = users
+                      .filter((u) => u.id !== editingUser.id)
+                      .map((u) => u.email);
+                    setEditEmail(generateUsername(val, otherUsernames));
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Usuario *
+                </label>
+                <input
+                  type="text"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-semibold text-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Número de documento (Cédula) *
@@ -354,19 +403,21 @@ export default function UsersView({
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Ej: Andrés Gómez Rojas"
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Correo electrónico *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Usuario *</label>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  onChange={(e) => setEmail(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  placeholder="nombre.apellido"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-semibold text-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   required
                 />
               </div>

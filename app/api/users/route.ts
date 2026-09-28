@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generateUsername } from '@/lib/utils';
 
 export async function GET() {
   try {
@@ -22,29 +23,28 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { cedula, name, email, password, role, assignedCampaignIds } = body;
 
-    if (!cedula || !name || !email || !role) {
+    if (!cedula || !name || !role) {
       return NextResponse.json(
-        { error: 'Cédula, nombre, email y rol son requeridos' },
+        { error: 'Cédula, nombre y rol son requeridos' },
         { status: 400 }
       );
     }
 
-    const existing = await prisma.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
+    const allUsers = await prisma.user.findMany({
+      select: { email: true },
     });
+    const existingUsernames = allUsers.map((u) => u.email);
 
-    if (existing) {
-      return NextResponse.json(
-        { error: 'El correo electrónico ya se encuentra registrado' },
-        { status: 400 }
-      );
+    let finalUsername = (email || '').trim().toLowerCase().split('@')[0];
+    if (!finalUsername || existingUsernames.includes(finalUsername)) {
+      finalUsername = generateUsername(name, existingUsernames);
     }
 
     const newUser = await prisma.user.create({
       data: {
         cedula: cedula.trim(),
         name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: finalUsername,
         password: password || '123456',
         role,
         ...(Array.isArray(assignedCampaignIds) && assignedCampaignIds.length > 0

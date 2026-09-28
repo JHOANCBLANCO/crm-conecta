@@ -196,7 +196,7 @@ export default function Navbar({
                 <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50">
                   <div className="px-4 py-2.5 border-b border-slate-100">
                     <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
-                    <p className="text-[11px] text-slate-500">{currentUser.email}</p>
+                    <p className="text-[11px] font-mono text-sky-700">{(currentUser.email || '').split('@')[0]}</p>
                     {currentUser.cedula && (
                       <p className="text-[10px] font-mono text-slate-500 mt-0.5">
                         C.C. {currentUser.cedula}

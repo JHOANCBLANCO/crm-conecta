@@ -8,13 +8,32 @@ export async function POST(req: Request) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Por favor ingresa correo y contraseña' },
+        { error: 'Por favor ingresa usuario y contraseña' },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
+    const rawInput = email.trim().toLowerCase();
+    const cleanUsername = rawInput.split('@')[0];
+
+    const legacyAliases: Record<string, string> = {
+      admin: 'carlos.mendoza',
+      andres: 'andres.gomez',
+      mariana: 'mariana.lopez',
+      backoffice: 'valentina.silva',
+      backoffice2: 'camilo.rojas',
+    };
+    const mappedUsername = legacyAliases[cleanUsername] || cleanUsername;
+
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: rawInput },
+          { email: cleanUsername },
+          { email: mappedUsername },
+          { email: `${cleanUsername}@conecta.com` },
+        ],
+      },
       include: {
         assignedCampaigns: {
           select: { id: true, name: true, color: true },
@@ -24,7 +43,7 @@ export async function POST(req: Request) {
 
     if (!user || user.password !== password) {
       return NextResponse.json(
-        { error: 'Credenciales inválidas. Verifica tu correo y contraseña.' },
+        { error: 'Credenciales inválidas. Verifica tu usuario y contraseña.' },
         { status: 401 }
       );
     }
