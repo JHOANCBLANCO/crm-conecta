@@ -49,8 +49,8 @@ async function main() {
     data: {
       id: 'usr_admin_1',
       cedula: '79890123',
-      name: 'Carlos Mendoza',
-      email: 'carlos.mendoza',
+      name: 'Jhoan Castiblanco',
+      email: 'jhoan.castiblanco',
       password: 'admin',
       role: 'ADMIN',
       createdAt: new Date('2025-10-01T08:00:00Z'),
@@ -61,8 +61,8 @@ async function main() {
     data: {
       id: 'usr_asesor_1',
       cedula: '1019045892',
-      name: 'Andrés Gómez',
-      email: 'andres.gomez',
+      name: 'Derly Fester',
+      email: 'derly.fester',
       password: '123',
       role: 'ASESOR',
       createdAt: new Date('2025-12-01T08:00:00Z'),
@@ -76,8 +76,8 @@ async function main() {
     data: {
       id: 'usr_asesor_2',
       cedula: '1022983410',
-      name: 'Mariana López',
-      email: 'mariana.lopez',
+      name: 'Mariana Rodriguez',
+      email: 'mariana.rodriguez',
       password: '123',
       role: 'ASESOR',
       createdAt: new Date(),
@@ -91,8 +91,8 @@ async function main() {
     data: {
       id: 'usr_backoffice_1',
       cedula: '52890412',
-      name: 'Valentina Silva',
-      email: 'valentina.silva',
+      name: 'Gabriela Castiblanco',
+      email: 'gabriela.castiblanco',
       password: '123',
       role: 'BACKOFFICE',
       createdAt: new Date('2025-11-15T08:00:00Z'),
@@ -106,8 +106,8 @@ async function main() {
     data: {
       id: 'usr_backoffice_2',
       cedula: '80123987',
-      name: 'Camilo Rojas',
-      email: 'camilo.rojas',
+      name: 'Alan Rodriguez',
+      email: 'alan.rodriguez',
       password: '123',
       role: 'BACKOFFICE',
       createdAt: new Date('2025-11-20T08:00:00Z'),
@@ -226,7 +226,7 @@ async function main() {
       saleId: sale1.id,
       userId: backoffice1.id,
       action: 'ACTIVO',
-      comment: 'Radicado RAD-MOV-88201 activado exitosamente por Valentina Silva.',
+      comment: 'Radicado RAD-MOV-88201 activado exitosamente por Gabriela Castiblanco.',
     },
   });
 

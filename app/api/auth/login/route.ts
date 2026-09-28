@@ -17,11 +17,11 @@ export async function POST(req: Request) {
     const cleanUsername = rawInput.split('@')[0];
 
     const legacyAliases: Record<string, string> = {
-      admin: 'carlos.mendoza',
-      andres: 'andres.gomez',
-      mariana: 'mariana.lopez',
-      backoffice: 'valentina.silva',
-      backoffice2: 'camilo.rojas',
+      admin: 'jhoan.castiblanco',
+      derly: 'derly.fester',
+      mariana: 'mariana.rodriguez',
+      gabriela: 'gabriela.castiblanco',
+      alan: 'alan.rodriguez',
     };
     const mappedUsername = legacyAliases[cleanUsername] || cleanUsername;
 
