@@ -90,11 +90,14 @@ export default function Home() {
     loadData();
   }, [loadData]);
 
-  // Sincronización automática en tiempo real cada 4 segundos (bloqueos de Back Office y nuevas ventas)
+  // Sincronización automática en tiempo real cada 4 segundos (bloqueos de Back Office, nuevas ventas y estado activo del usuario)
   useEffect(() => {
     if (!currentUser) return;
     const interval = setInterval(async () => {
       try {
+        const authUser = await checkAuth();
+        if (!authUser) return;
+
         const salesRes = await fetch(
           `/api/sales?userId=${currentUser.id}&userRole=${currentUser.role}&t=${Date.now()}`,
           { cache: 'no-store' }
@@ -109,7 +112,7 @@ export default function Home() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser, checkAuth]);
 
   // When switching user in the demo pill, set tab appropriately
   const handleSelectUser = async (newUser: User) => {

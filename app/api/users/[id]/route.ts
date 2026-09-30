@@ -13,8 +13,25 @@ export async function PATCH(
     const data: any = {};
     if (cedula) data.cedula = cedula.trim();
     if (name) data.name = name.trim();
-    if (email) data.email = email.trim().toLowerCase();
-    if (password) data.password = password;
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase().split('@')[0].replace(/\s+/g, '');
+      const conflict = await prisma.user.findFirst({
+        where: {
+          email: cleanEmail,
+          NOT: { id },
+        },
+      });
+      if (conflict) {
+        return NextResponse.json(
+          { error: `El usuario "${cleanEmail}" ya pertenece a otro registro (activo o inactivo) y no puede reutilizarse.` },
+          { status: 400 }
+        );
+      }
+      data.email = cleanEmail;
+    }
+    if (typeof password === 'string' && password.trim().length > 0) {
+      data.password = password.trim();
+    }
     if (role) data.role = role;
     if (typeof active === 'boolean') data.active = active;
 

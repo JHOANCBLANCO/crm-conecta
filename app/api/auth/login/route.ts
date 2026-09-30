@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!user || user.password !== password) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Credenciales inválidas. Verifica tu usuario y contraseña.' },
         { status: 401 }
@@ -52,6 +52,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'Tu usuario se encuentra inactivo. Contacta al administrador.' },
         { status: 403 }
+      );
+    }
+
+    if (user.password !== password) {
+      return NextResponse.json(
+        { error: 'Credenciales inválidas. Verifica tu usuario y contraseña.' },
+        { status: 401 }
       );
     }
 

@@ -23,6 +23,7 @@ export interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'ASESOR' | 'BACKOFFICE';
+  active?: boolean;
   createdAt?: string;
   assignedCampaigns?: Array<{ id: string; name: string; color: string }>;
 }

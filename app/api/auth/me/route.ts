@@ -21,6 +21,7 @@ export async function GET() {
     });
 
     if (!user || !user.active) {
+      cookieStore.delete('crm_user_id');
       return NextResponse.json({ user: null });
     }
 
@@ -30,6 +31,7 @@ export async function GET() {
       name: user.name,
       email: user.email,
       role: user.role,
+      active: user.active,
       createdAt: user.createdAt,
       assignedCampaigns: user.assignedCampaigns,
     };

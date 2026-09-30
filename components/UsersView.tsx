@@ -1,7 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
-import { UserPlus, Edit, Users as UsersIcon, Shield, FileCheck2, Briefcase } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  UserPlus,
+  Edit,
+  Users as UsersIcon,
+  Shield,
+  FileCheck2,
+  Briefcase,
+  UserCheck,
+  UserX,
+  KeyRound,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { formatDate, generateUsername } from '@/lib/utils';
 import { User } from './Navbar';
 
@@ -25,11 +37,14 @@ export default function UsersView({
   currentUser,
   onRefresh,
 }: UsersViewProps) {
+  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE' | 'ALL'>('ACTIVE');
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [cedula, setCedula] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('123456');
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [role, setRole] = useState<'ADMIN' | 'ASESOR' | 'BACKOFFICE'>('ASESOR');
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,10 +54,34 @@ export default function UsersView({
   const [editCedula, setEditCedula] = useState('');
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editActive, setEditActive] = useState<boolean>(true);
   const [editCampaignIds, setEditCampaignIds] = useState<string[]>([]);
+  const [editErrorMsg, setEditErrorMsg] = useState<string | null>(null);
   const [isUpdatingCampaigns, setIsUpdatingCampaigns] = useState(false);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
-  const existingUsernames = users.map((u) => u.email);
+  // Todos los usuarios (activos e inactivos) bloquean su nombre de usuario para que nunca quede libre
+  const existingUsernames = useMemo(() => users.map((u) => u.email), [users]);
+
+  const activeUsersCount = useMemo(
+    () => users.filter((u) => u.active !== false).length,
+    [users]
+  );
+  const inactiveUsersCount = useMemo(
+    () => users.filter((u) => u.active === false).length,
+    [users]
+  );
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const isUserActive = u.active !== false;
+      if (statusFilter === 'ACTIVE') return isUserActive;
+      if (statusFilter === 'INACTIVE') return !isUserActive;
+      return true;
+    });
+  }, [users, statusFilter]);
 
   const handleNameChange = (newName: string) => {
     setName(newName);
@@ -50,11 +89,35 @@ export default function UsersView({
     setEmail(autoUser);
   };
 
+  const handleToggleUserStatus = async (u: User) => {
+    if (u.id === currentUser.id) return;
+    const nextActive = u.active === false ? true : false;
+    setTogglingUserId(u.id);
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: nextActive }),
+      });
+      if (res.ok) {
+        onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTogglingUserId(null);
+    }
+  };
+
   const handleOpenEditCampaigns = (u: User) => {
     setEditingUser(u);
     setEditCedula(u.cedula || '');
     setEditName(u.name || '');
     setEditEmail((u.email || '').split('@')[0]);
+    setEditPassword('');
+    setShowEditPassword(false);
+    setEditActive(u.active !== false);
+    setEditErrorMsg(null);
     const ids = u.assignedCampaigns?.map((c) => c.id) || [];
     setEditCampaignIds(ids);
   };
@@ -63,23 +126,32 @@ export default function UsersView({
     e.preventDefault();
     if (!editingUser) return;
     setIsUpdatingCampaigns(true);
+    setEditErrorMsg(null);
     try {
+      const payload: Record<string, any> = {
+        cedula: editCedula,
+        name: editName.trim(),
+        email: editEmail.trim().toLowerCase().split('@')[0].replace(/\s+/g, ''),
+        active: editingUser.id === currentUser.id ? true : editActive,
+        assignedCampaignIds: editCampaignIds,
+      };
+      if (editPassword.trim().length > 0) {
+        payload.password = editPassword.trim();
+      }
+
       const res = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cedula: editCedula,
-          name: editName.trim(),
-          email: editEmail.trim().toLowerCase().split('@')[0],
-          assignedCampaignIds: editCampaignIds,
-        }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        setEditingUser(null);
-        onRefresh();
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al actualizar usuario');
       }
-    } catch (err) {
-      console.error(err);
+      setEditingUser(null);
+      onRefresh();
+    } catch (err: any) {
+      setEditErrorMsg(err.message);
     } finally {
       setIsUpdatingCampaigns(false);
     }
@@ -98,7 +170,7 @@ export default function UsersView({
         body: JSON.stringify({
           cedula: cedula.trim(),
           name: name.trim(),
-          email: email.trim().toLowerCase().split('@')[0],
+          email: email.trim().toLowerCase().split('@')[0].replace(/\s+/g, ''),
           password: password || '123456',
           role,
           assignedCampaignIds: selectedCampaignIds,
@@ -150,11 +222,52 @@ export default function UsersView({
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl border border-sky-100">
-            <UsersIcon className="w-5 h-5" />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl border border-sky-100">
+              <UsersIcon className="w-5 h-5" />
+            </div>
+            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Usuarios</h1>
           </div>
-          <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Usuarios</h1>
+
+          {/* Pestañas Activos / Inactivos / Todos */}
+          <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ACTIVE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                statusFilter === 'ACTIVE'
+                  ? 'bg-white text-emerald-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Activos ({activeUsersCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('INACTIVE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                statusFilter === 'INACTIVE'
+                  ? 'bg-white text-rose-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <UserX className="w-3.5 h-3.5" />
+              <span>Inactivos ({inactiveUsersCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                statusFilter === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Todos ({users.length})
+            </button>
+          </div>
         </div>
 
         <button
@@ -175,82 +288,135 @@ export default function UsersView({
                 <th className="py-3.5 px-4">Usuario</th>
                 <th className="py-3.5 px-4">Documento</th>
                 <th className="py-3.5 px-4">Rol</th>
+                <th className="py-3.5 px-4">Estado</th>
                 <th className="py-3.5 px-4">Campañas</th>
                 <th className="py-3.5 px-4">Registro</th>
-                <th className="py-3.5 px-4 text-right">Editar</th>
+                <th className="py-3.5 px-4 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map((u) => {
-                const assigned = u.assignedCampaigns || [];
-                const badge = getRoleBadge(u.role);
-                const Icon = badge.icon;
-                return (
-                  <tr key={u.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center space-x-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase">
-                          {u.name.slice(0, 2)}
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                    No hay usuarios en esta vista.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => {
+                  const assigned = u.assignedCampaigns || [];
+                  const badge = getRoleBadge(u.role);
+                  const Icon = badge.icon;
+                  const isUserActive = u.active !== false;
+                  const isSelf = u.id === currentUser.id;
+
+                  return (
+                    <tr
+                      key={u.id}
+                      className={`hover:bg-slate-50/80 transition ${
+                        !isUserActive ? 'bg-slate-50/50 opacity-75' : ''
+                      }`}
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center space-x-2.5">
+                          <div
+                            className={`w-8 h-8 rounded-xl text-white flex items-center justify-center font-bold text-xs uppercase ${
+                              isUserActive
+                                ? 'bg-gradient-to-br from-slate-700 to-slate-900'
+                                : 'bg-slate-400'
+                            }`}
+                          >
+                            {u.name.slice(0, 2)}
+                          </div>
+                          <span className="font-bold text-slate-900">{u.name}</span>
                         </div>
-                        <span className="font-bold text-slate-900">{u.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono text-xs font-semibold text-sky-700 bg-sky-50 border border-sky-100 px-2.5 py-1 rounded-lg">
-                        {(u.email || '').split('@')[0]}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-700">
-                      {u.cedula || '—'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center space-x-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${badge.color}`}
-                      >
-                        <Icon className="w-3 h-3" />
-                        <span>{badge.label}</span>
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {u.role === 'ADMIN' ? (
-                        <span className="text-purple-700 font-bold text-[11px]">Todas</span>
-                      ) : assigned.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {assigned.map((c) => (
-                            <span
-                              key={c.id}
-                              className="px-2 py-0.5 rounded text-[10px] font-bold text-white"
-                              style={{ backgroundColor: c.color }}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono text-xs font-semibold text-sky-700 bg-sky-50 border border-sky-100 px-2.5 py-1 rounded-lg">
+                          {(u.email || '').split('@')[0]}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">
+                        {u.cedula || '—'}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center space-x-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${badge.color}`}
+                        >
+                          <Icon className="w-3 h-3" />
+                          <span>{badge.label}</span>
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {isUserActive ? (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <UserCheck className="w-3 h-3" />
+                            <span>Activo</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                            <UserX className="w-3 h-3" />
+                            <span>Inactivo</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {u.role === 'ADMIN' ? (
+                          <span className="text-purple-700 font-bold text-[11px]">Todas</span>
+                        ) : assigned.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {assigned.map((c) => (
+                              <span
+                                key={c.id}
+                                className="px-2 py-0.5 rounded text-[10px] font-bold text-white"
+                                style={{ backgroundColor: c.color }}
+                              >
+                                {c.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {u.createdAt ? formatDate(u.createdAt) : '—'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="inline-flex items-center justify-end space-x-1.5">
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              disabled={togglingUserId === u.id}
+                              onClick={() => handleToggleUserStatus(u)}
+                              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition ${
+                                isUserActive
+                                  ? 'text-rose-700 bg-rose-50 hover:bg-rose-100 border-rose-200'
+                                  : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
+                              }`}
                             >
-                              {c.name}
-                            </span>
-                          ))}
+                              {isUserActive ? 'Inactivar' : 'Reactivar'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditCampaigns(u)}
+                            className="p-2 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition"
+                            title="Editar usuario / Cambiar clave"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
                         </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-500">
-                      {u.createdAt ? formatDate(u.createdAt) : '—'}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleOpenEditCampaigns(u)}
-                        className="p-2 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition"
-                        title="Editar"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal: Editar Usuario */}
+      {/* Modal: Editar Usuario / Cambiar Clave / Estado */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
@@ -264,7 +430,13 @@ export default function UsersView({
               </button>
             </div>
 
-            <form onSubmit={handleSaveCampaigns} className="p-5 space-y-4">
+            <form onSubmit={handleSaveCampaigns} className="p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+              {editErrorMsg && (
+                <div className="p-3 bg-rose-50 text-rose-800 text-xs rounded-lg border border-rose-200">
+                  {editErrorMsg}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Nombre completo *
@@ -312,12 +484,71 @@ export default function UsersView({
                 />
               </div>
 
+              {/* Cambiar Contraseña */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center space-x-1">
+                  <KeyRound className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Cambiar contraseña</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showEditPassword ? 'text' : 'password'}
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Nueva contraseña (dejar vacío para no cambiar)"
+                    className="w-full px-3 py-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Estado Activo / Inactivo */}
+              {editingUser.id !== currentUser.id && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Estado de acceso
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditActive(true)}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
+                        editActive
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Activo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditActive(false)}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
+                        !editActive
+                          ? 'bg-rose-50 border-rose-500 text-rose-800'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      <UserX className="w-4 h-4" />
+                      <span>Inactivo</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {editingUser.role !== 'ADMIN' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Campañas asignadas
                   </label>
-                  <div className="space-y-1.5 max-h-52 overflow-y-auto border border-slate-200 rounded-lg p-2.5 bg-slate-50">
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto border border-slate-200 rounded-lg p-2.5 bg-slate-50">
                     {campaigns.map((camp) => {
                       const isChecked = editCampaignIds.includes(camp.id);
                       return (
@@ -424,13 +655,22 @@ export default function UsersView({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Contraseña *</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showCreatePassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword(!showCreatePassword)}
+                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
