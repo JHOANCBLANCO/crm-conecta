@@ -95,11 +95,22 @@ export default function SaleModal({
   const [nip, setNip] = useState('');
   const [contractNumber, setContractNumber] = useState('');
   const [contractType, setContractType] = useState('Firmado'); // Firmado | Grabado | Venta Digital
-  const [validationMethod, setValidationMethod] = useState('Claro Safe'); // Claro Safe | ID Visión Biométrico | Venta Digital
+  const [validationMethod, setValidationMethod] = useState('Claro Safe'); // Claro Safe | ID Visión | Biométrico | Venta Digital
   const [identityValidationDate, setIdentityValidationDate] = useState(todayStr);
   const [otpLine, setOtpLine] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [saleType, setSaleType] = useState('Línea Nueva'); // Migración | Línea Nueva | Portabilidad
+  const [operatorOptions, setOperatorOptions] = useState<string[]>([
+    'Claro',
+    'Tigo',
+    'WOM',
+    'Movistar',
+    'ETB',
+  ]);
+  const [originOperator, setOriginOperator] = useState('Claro');
+  const [customOperator, setCustomOperator] = useState('');
+  const [salesChannel, setSalesChannel] = useState('Telemercadeo');
+  const [customSalesChannel, setCustomSalesChannel] = useState('');
   const [databaseName, setDatabaseName] = useState('');
   const [externalId, setExternalId] = useState('');
   const [observation, setObservation] = useState('');
@@ -115,6 +126,19 @@ export default function SaleModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cargar lista de operadores (incluyendo los personalizados guardados)
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch('/api/operators', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data?.operators) && data.operators.length > 0) {
+          setOperatorOptions(data.operators);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -157,6 +181,10 @@ export default function SaleModal({
       setOtpLine('');
       setOtpCode('');
       setSaleType('Línea Nueva');
+      setOriginOperator('Claro');
+      setCustomOperator('');
+      setSalesChannel('Telemercadeo');
+      setCustomSalesChannel('');
       setDatabaseName('');
       setExternalId('');
       setObservation('');
@@ -225,6 +253,30 @@ export default function SaleModal({
     }
   };
 
+  const handleSaveCustomOperator = async () => {
+    const trimmed = customOperator.trim();
+    if (!trimmed) return;
+    const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+    if (!operatorOptions.some((o) => o.toLowerCase() === formatted.toLowerCase())) {
+      setOperatorOptions((prev) => [...prev, formatted]);
+    }
+    setOriginOperator(formatted);
+    setCustomOperator('');
+    try {
+      const res = await fetch('/api/operators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operator: formatted }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data?.operators)) {
+        setOperatorOptions(data.operators);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -242,6 +294,26 @@ export default function SaleModal({
     if (!clientPhone.trim()) {
       setError('El Número de Contacto 1 es obligatorio (solo números).');
       return;
+    }
+
+    let finalOriginOperator = originOperator;
+    if (originOperator === 'Otro') {
+      if (!customOperator.trim()) {
+        setError('Por favor escribe cuál es el otro Operador de Origen.');
+        return;
+      }
+      finalOriginOperator =
+        customOperator.trim().charAt(0).toUpperCase() + customOperator.trim().slice(1);
+    }
+
+    let finalSalesChannel = salesChannel;
+    if (salesChannel === 'Otro') {
+      if (!customSalesChannel.trim()) {
+        setError('Por favor escribe cuál es el Canal de Venta.');
+        return;
+      }
+      finalSalesChannel =
+        customSalesChannel.trim().charAt(0).toUpperCase() + customSalesChannel.trim().slice(1);
     }
 
     if (!cedulaUrl) {
@@ -287,6 +359,8 @@ export default function SaleModal({
           otpLine: otpLine.trim() || null,
           otpCode: otpCode.trim() || null,
           saleType,
+          originOperator: finalOriginOperator,
+          salesChannel: finalSalesChannel,
           databaseName: databaseName.trim() || null,
           externalId: externalId.trim() || null,
           observation: observation.trim() || null,
@@ -299,6 +373,13 @@ export default function SaleModal({
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar la venta');
+
+      if (
+        finalOriginOperator &&
+        !operatorOptions.some((o) => o.toLowerCase() === finalOriginOperator.toLowerCase())
+      ) {
+        setOperatorOptions((prev) => [...prev, finalOriginOperator]);
+      }
 
       onSaleCreated();
       onClose();
@@ -774,6 +855,84 @@ export default function SaleModal({
                   <option value="Portabilidad">Portabilidad</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Operador de Origen *
+                </label>
+                <select
+                  value={originOperator}
+                  onChange={(e) => setOriginOperator(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  {operatorOptions.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              {originOperator === 'Otro' && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-sky-700 mb-1">
+                    ¿Cuál es el otro Operador de Origen? *
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={customOperator}
+                      onChange={(e) => setCustomOperator(e.target.value)}
+                      placeholder="Escribe el operador (se guardará en la lista)"
+                      className="flex-1 px-3 py-2 bg-sky-50/50 border border-sky-300 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveCustomOperator}
+                      className="px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition whitespace-nowrap"
+                    >
+                      Agregar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Canal de Venta *
+                </label>
+                <select
+                  value={salesChannel}
+                  onChange={(e) => setSalesChannel(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="Telemercadeo">Telemercadeo</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Redes Sociales">Redes Sociales</option>
+                  <option value="Base de Datos">Base de Datos</option>
+                  <option value="Referido">Referido</option>
+                  <option value="Digital / Web">Digital / Web</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              {salesChannel === 'Otro' && (
+                <div>
+                  <label className="block text-xs font-bold text-sky-700 mb-1">
+                    ¿Cuál Canal de Venta? *
+                  </label>
+                  <input
+                    type="text"
+                    value={customSalesChannel}
+                    onChange={(e) => setCustomSalesChannel(e.target.value)}
+                    placeholder="Escribe el canal"
+                    className="w-full px-3 py-2 bg-sky-50/50 border border-sky-300 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">

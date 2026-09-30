@@ -95,6 +95,8 @@ model Sale {
   otpLine                String?    // Línea OTP realizada
   otpCode                String?    // Número OTP confirmado
   saleType               String?    // "Migración" | "Línea Nueva" | "Portabilidad"
+  originOperator         String?    // Operador de origen ("Claro" | "Tigo" | "WOM" | "Movistar" | "ETB" | otro personalizado)
+  salesChannel           String?    // Canal de venta ("Telemercadeo" | "WhatsApp" | "Redes Sociales" | "Base de Datos" | "Referido" | "Digital / Web")
   databaseName           String?    // Nombre de la base
   externalId             String?    // ID
   observation            String?    // Observación del consultor

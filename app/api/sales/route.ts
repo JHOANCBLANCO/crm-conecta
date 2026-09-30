@@ -1,10 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { saveCustomOperatorToFile } from '@/app/api/operators/route';
 
 export const dynamic = 'force-dynamic';
 
+let columnsEnsured = false;
+async function ensureSaleColumns() {
+  if (columnsEnsured) return;
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE "Sale" ADD COLUMN "originOperator" TEXT').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Sale" ADD COLUMN "salesChannel" TEXT').catch(() => {});
+    columnsEnsured = true;
+  } catch (e) {
+    // ignore
+  }
+}
+
 export async function GET(req: Request) {
   try {
+    await ensureSaleColumns();
     const { searchParams } = new URL(req.url);
     const advisorId = searchParams.get('advisorId');
     const campaignId = searchParams.get('campaignId');
@@ -82,6 +96,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await ensureSaleColumns();
     const body = await req.json();
     const {
       campaignId,
@@ -110,6 +125,8 @@ export async function POST(req: Request) {
       otpLine,
       otpCode,
       saleType,
+      originOperator,
+      salesChannel,
       databaseName,
       externalId,
       observation,
@@ -176,6 +193,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'El plan seleccionado no existe' }, { status: 404 });
     }
 
+    const cleanOriginOperator = originOperator?.trim() || null;
+    if (cleanOriginOperator && cleanOriginOperator.toLowerCase() !== 'otro') {
+      saveCustomOperatorToFile(cleanOriginOperator);
+    }
+
     const sale = await prisma.sale.create({
       data: {
         campaignId,
@@ -205,6 +227,8 @@ export async function POST(req: Request) {
         otpLine: otpLine?.trim() || null,
         otpCode: otpCode?.trim() || null,
         saleType: saleType || 'Línea Nueva',
+        originOperator: cleanOriginOperator,
+        salesChannel: salesChannel?.trim() || 'Telemercadeo',
         databaseName: databaseName?.trim() || null,
         externalId: externalId?.trim() || null,
         observation: observation?.trim() || null,

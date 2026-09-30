@@ -52,6 +52,7 @@ export default function DashboardView({
   // Filtros principales
   const [selectedCampaignId, setSelectedCampaignId] = useState('ALL');
   const [selectedAdvisorId, setSelectedAdvisorId] = useState('ALL');
+  const [selectedChannel, setSelectedChannel] = useState('ALL');
   const [selectedStage, setSelectedStage] = useState('ALL');
   const [timeFilter, setTimeFilter] = useState('TODAY'); // Por defecto permite ver ventas del día o cambiar a Histórico/Mes
   const [customDateFrom, setCustomDateFrom] = useState(todayStr);
@@ -73,11 +74,25 @@ export default function DashboardView({
     return users.filter((u) => u.role === 'ASESOR' || u.role === 'ADMIN');
   }, [users]);
 
-  // Base filtrada por Campaña, Consultor y Estado (sin filtro de fecha para alimentar también el comparador)
+  const availableChannels = useMemo(() => {
+    const base = ['Telemercadeo', 'WhatsApp', 'Redes Sociales', 'Base de Datos', 'Referido', 'Digital / Web'];
+    const seen = new Set(base.map((c) => c.toLowerCase()));
+    sales.forEach((s) => {
+      const ch = s.salesChannel?.trim();
+      if (ch && !seen.has(ch.toLowerCase())) {
+        seen.add(ch.toLowerCase());
+        base.push(ch);
+      }
+    });
+    return base;
+  }, [sales]);
+
+  // Base filtrada por Campaña, Consultor, Canal y Estado (sin filtro de fecha para alimentar también el comparador)
   const baseFilteredSales = useMemo(() => {
     return sales.filter((s) => {
       if (selectedCampaignId !== 'ALL' && s.campaignId !== selectedCampaignId) return false;
       if (selectedAdvisorId !== 'ALL' && s.advisorId !== selectedAdvisorId) return false;
+      if (selectedChannel !== 'ALL' && (s.salesChannel || 'Telemercadeo') !== selectedChannel) return false;
 
       if (selectedStage !== 'ALL') {
         if (selectedStage === 'ACTIVO') {
@@ -90,7 +105,7 @@ export default function DashboardView({
       }
       return true;
     });
-  }, [sales, selectedCampaignId, selectedAdvisorId, selectedStage]);
+  }, [sales, selectedCampaignId, selectedAdvisorId, selectedChannel, selectedStage]);
 
   const applyTimeFilter = (dataset: Sale[]) => {
     const now = new Date();
@@ -99,6 +114,7 @@ export default function DashboardView({
     return dataset.filter((s) => {
       if (selectedCampaignId !== 'ALL' && s.campaignId !== selectedCampaignId) return false;
       if (selectedAdvisorId !== 'ALL' && s.advisorId !== selectedAdvisorId) return false;
+      if (selectedChannel !== 'ALL' && (s.salesChannel || 'Telemercadeo') !== selectedChannel) return false;
       if (selectedStage !== 'ALL') {
         if (selectedStage === 'ACTIVO') {
           if (s.stage !== 'ACTIVO' && s.stage !== 'APROBADO') return false;
@@ -145,7 +161,7 @@ export default function DashboardView({
 
   const filteredSales = useMemo(
     () => applyTimeFilter(sales),
-    [sales, selectedCampaignId, selectedAdvisorId, selectedStage, timeFilter, customDateFrom, customDateTo]
+    [sales, selectedCampaignId, selectedAdvisorId, selectedChannel, selectedStage, timeFilter, customDateFrom, customDateTo]
   );
 
   // Cálculo del Comparador (Hoy vs Ayer o Período A vs Período B)
@@ -288,6 +304,32 @@ export default function DashboardView({
       if (s.stage === 'ACTIVO' || s.stage === 'APROBADO') entry.approvedCount += 1;
     });
     return Array.from(map.values()).sort((a, b) => b.totalValue - a.totalValue);
+  }, [filteredSales]);
+
+  // Estadísticas por Canal de Venta (medio por el cual se vende más)
+  const channelStats = useMemo(() => {
+    const map = new Map<
+      string,
+      { name: string; count: number; approvedCount: number; totalValue: number }
+    >();
+    filteredSales.forEach((s) => {
+      const ch = s.salesChannel?.trim() || 'Telemercadeo';
+      if (!map.has(ch)) {
+        map.set(ch, {
+          name: ch,
+          count: 0,
+          approvedCount: 0,
+          totalValue: 0,
+        });
+      }
+      const entry = map.get(ch)!;
+      entry.count += 1;
+      entry.totalValue += s.saleValue;
+      if (s.stage === 'ACTIVO' || s.stage === 'APROBADO') entry.approvedCount += 1;
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      b.count !== a.count ? b.count - a.count : b.totalValue - a.totalValue
+    );
   }, [filteredSales]);
 
   // Descarga Excel en Tiempo Real
@@ -462,8 +504,8 @@ export default function DashboardView({
           ))}
         </div>
 
-        {/* Filtros de Campaña, Consultor y Estado */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+        {/* Filtros de Campaña, Consultor, Canal de Venta y Estado */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
               Campaña
@@ -495,6 +537,24 @@ export default function DashboardView({
               {advisors.map((adv) => (
                 <option key={adv.id} value={adv.id}>
                   {adv.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+              Canal de Venta
+            </label>
+            <select
+              value={selectedChannel}
+              onChange={(e) => setSelectedChannel(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <option value="ALL">Todos los canales</option>
+              {availableChannels.map((ch) => (
+                <option key={ch} value={ch}>
+                  {ch}
                 </option>
               ))}
             </select>
@@ -777,8 +837,8 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Desglose por Campaña y Consultor */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Desglose por Campaña, Canal de Venta y Consultor */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/90">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
@@ -823,6 +883,72 @@ export default function DashboardView({
               );
             })}
             {campaignStats.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-6">
+                Sin registros.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Por Canal de Venta (Medio por el cual se vende más) */}
+        <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/90">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Zap className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-extrabold text-sm text-slate-900">Por Canal de Venta</h3>
+            </div>
+            <span className="text-xs font-bold text-slate-400">{channelStats.length}</span>
+          </div>
+
+          <div className="space-y-3">
+            {channelStats.map((ch, idx) => {
+              const countPercentage =
+                totalSalesCount > 0 ? Math.round((ch.count / totalSalesCount) * 100) : 0;
+              return (
+                <div
+                  key={ch.name}
+                  className={`p-3 rounded-xl border ${
+                    idx === 0
+                      ? 'bg-emerald-50/50 border-emerald-200'
+                      : 'bg-slate-50 border-slate-200/70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          idx === 0
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        #{idx + 1}
+                      </span>
+                      <span className="font-bold text-xs text-slate-800">{ch.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-black text-xs text-slate-900">
+                        {ch.count} ventas
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-500 ml-1">
+                        ({countPercentage}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-600"
+                      style={{ width: `${countPercentage}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mt-1">
+                    <span>{formatCurrency(ch.totalValue)}</span>
+                    <span className="text-emerald-700">{ch.approvedCount} activas</span>
+                  </div>
+                </div>
+              );
+            })}
+            {channelStats.length === 0 && (
               <p className="text-xs text-slate-400 text-center py-6">
                 Sin registros.
               </p>
@@ -898,6 +1024,7 @@ export default function DashboardView({
                 <th className="py-3.5 px-4">Fecha</th>
                 <th className="py-3.5 px-4">Cliente</th>
                 <th className="py-3.5 px-4">Campaña / Plan</th>
+                <th className="py-3.5 px-4">Canal / Origen</th>
                 <th className="py-3.5 px-4">Consultor</th>
                 <th className="py-3.5 px-4">Back Office / Radicado</th>
                 <th className="py-3.5 px-4">Fechas</th>
@@ -926,6 +1053,14 @@ export default function DashboardView({
                     </span>
                     <div className="font-semibold text-slate-800">{sale.plan.name}</div>
                     <div className="font-bold text-emerald-700">{formatCurrency(sale.saleValue)}</div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="font-bold text-slate-800">
+                      {sale.salesChannel || 'Telemercadeo'}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Origen: {sale.originOperator || '—'}
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-slate-700">
                     <div className="font-bold">{sale.advisor.name}</div>
@@ -970,7 +1105,7 @@ export default function DashboardView({
               ))}
               {tableDisplaySales.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-xs text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-xs text-slate-400">
                     Sin ventas en este filtro.
                   </td>
                 </tr>

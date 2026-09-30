@@ -68,6 +68,8 @@ export interface Sale {
   otpLine?: string | null;
   otpCode?: string | null;
   saleType?: string | null;
+  originOperator?: string | null;
+  salesChannel?: string | null;
   databaseName?: string | null;
   externalId?: string | null;
   observation?: string | null;

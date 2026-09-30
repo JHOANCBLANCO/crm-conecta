@@ -122,9 +122,11 @@ export default function SaleDetailsModal({
               <FieldItem label="Línea OTP Realizada" value={sale.otpLine} />
               <FieldItem label="Número OTP Confirmado" value={sale.otpCode} />
               <FieldItem label="Tipo de Venta" value={sale.saleType} />
+              <FieldItem label="Operador de Origen" value={sale.originOperator} />
+              <FieldItem label="Canal de Venta" value={sale.salesChannel} />
               <FieldItem label="Nombre de la Base" value={sale.databaseName} />
               <FieldItem label="ID" value={sale.externalId} />
-              <div className="col-span-2">
+              <div className="col-span-2 sm:col-span-4">
                 <FieldItem label="Observación Consultor" value={sale.observation} />
               </div>
             </div>
