@@ -88,6 +88,8 @@ export interface Sale {
   documentCedulaName?: string | null;
   documentUtilityUrl?: string | null;
   documentUtilityName?: string | null;
+  planNameSnapshot?: string | null;
+  planPriceSnapshot?: number | null;
   createdAt: string;
   updatedAt: string;
   campaign: { id: string; name: string; color: string };

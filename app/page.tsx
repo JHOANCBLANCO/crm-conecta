@@ -209,6 +209,7 @@ export default function Home() {
             searchQuery={campaignSearch}
             setSearchQuery={setCampaignSearch}
             currentUserRole={currentUser.role}
+            currentUserId={currentUser.id}
             onRefresh={loadData}
             onOpenSaleModalWithPlan={handleOpenSaleModalWithPlan}
           />

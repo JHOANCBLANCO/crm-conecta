@@ -1051,7 +1051,9 @@ export default function DashboardView({
                     >
                       {sale.campaign.name}
                     </span>
-                    <div className="font-semibold text-slate-800">{sale.plan.name}</div>
+                    <div className="font-semibold text-slate-800">
+                      {sale.planNameSnapshot || sale.plan?.name || sale.acquiredServices}
+                    </div>
                     <div className="font-bold text-emerald-700">{formatCurrency(sale.saleValue)}</div>
                   </td>
                   <td className="py-3 px-4">

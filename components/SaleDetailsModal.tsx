@@ -110,10 +110,11 @@ export default function SaleDetailsModal({
               <span>4. Datos Comerciales, Contrato, Validación y OTP</span>
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <FieldItem label="Plan Vendido" value={sale.planNameSnapshot || sale.plan?.name || sale.acquiredServices} highlight />
               <FieldItem label="OT / MIN" value={sale.otMin} />
-              <FieldItem label="Servicios Adquiridos" value={sale.acquiredServices || sale.plan?.name} />
+              <FieldItem label="Servicios Adquiridos" value={sale.acquiredServices || sale.planNameSnapshot || sale.plan?.name} />
               <FieldItem label="Recurrente" value={sale.recurrent} />
-              <FieldItem label="CFM con IVA" value={formatCurrency(sale.saleValue)} highlight />
+              <FieldItem label="CFM con IVA" value={formatCurrency(sale.planPriceSnapshot || sale.saleValue || sale.plan?.price)} highlight />
               <FieldItem label="NIP" value={sale.nip} />
               <FieldItem label="Número de Contrato" value={sale.contractNumber} />
               <FieldItem label="Tipo de Contrato" value={sale.contractType} />

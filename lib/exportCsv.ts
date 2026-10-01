@@ -62,7 +62,7 @@ export function exportSalesToCsv(sales: any[], filename = 'reporte_ventas_tiempo
       esc(s.advisor?.cedula || ''),
       esc(s.advisor?.name || ''),
       esc(s.campaign?.name || ''),
-      esc(s.plan?.name || ''),
+      esc((s as any).planNameSnapshot || s.plan?.name || s.acquiredServices || ''),
       esc(s.documentType || 'Cédula'),
       esc(s.clientCedula),
       esc(s.clientName),

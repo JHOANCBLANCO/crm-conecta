@@ -501,7 +501,9 @@ export default function AdvisorSalesView({
                     >
                       {sale.campaign.name}
                     </span>
-                    <div className="font-semibold text-slate-800">{sale.plan.name}</div>
+                    <div className="font-semibold text-slate-800">
+                      {sale.planNameSnapshot || sale.plan?.name || sale.acquiredServices}
+                    </div>
                     <div className="text-emerald-700 font-bold">{formatCurrency(sale.saleValue)}</div>
                   </td>
 

@@ -56,6 +56,8 @@ model Sale {
   campaign               Campaign   @relation(fields: [campaignId], references: [id])
   planId                 String
   plan                   Plan       @relation(fields: [planId], references: [id])
+  planNameSnapshot       String?    // Nombre congelado del plan al momento de la venta
+  planPriceSnapshot      Float?     // Valor congelado del plan al momento de la venta
   advisorId              String
   advisor                User       @relation("AdvisorSales", fields: [advisorId], references: [id])
   validatorId            String?

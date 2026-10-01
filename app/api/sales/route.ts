@@ -10,6 +10,14 @@ async function ensureSaleColumns() {
   try {
     await prisma.$executeRawUnsafe('ALTER TABLE "Sale" ADD COLUMN "originOperator" TEXT').catch(() => {});
     await prisma.$executeRawUnsafe('ALTER TABLE "Sale" ADD COLUMN "salesChannel" TEXT').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Sale" ADD COLUMN "planNameSnapshot" TEXT').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Sale" ADD COLUMN "planPriceSnapshot" REAL').catch(() => {});
+    await prisma.$executeRawUnsafe(
+      'UPDATE "Sale" SET "planNameSnapshot" = (SELECT "name" FROM "Plan" WHERE "Plan"."id" = "Sale"."planId") WHERE "planNameSnapshot" IS NULL;'
+    ).catch(() => {});
+    await prisma.$executeRawUnsafe(
+      'UPDATE "Sale" SET "planPriceSnapshot" = "saleValue" WHERE "planPriceSnapshot" IS NULL;'
+    ).catch(() => {});
     columnsEnsured = true;
   } catch (e) {
     // ignore
@@ -217,6 +225,8 @@ export async function POST(req: Request) {
         clientEmail: clientEmail.trim(),
         otMin: otMin?.trim() || null,
         acquiredServices: acquiredServices?.trim() || plan.name,
+        planNameSnapshot: plan.name,
+        planPriceSnapshot: plan.price,
         recurrent: recurrent?.trim() || null,
         saleValue: plan.price,
         nip: nip?.trim() || null,
