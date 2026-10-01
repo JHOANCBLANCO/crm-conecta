@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
 
 export async function PATCH(
   req: Request,
@@ -9,6 +10,20 @@ export async function PATCH(
     const { id } = params;
     const body = await req.json();
     const { isArchived, name, description, color } = body;
+
+    if (typeof isArchived === 'boolean') {
+      const cookieStore = cookies();
+      const sessionUserId = cookieStore.get('crm_user_id')?.value;
+      if (sessionUserId) {
+        const requester = await prisma.user.findUnique({ where: { id: sessionUserId } });
+        if (requester && requester.role === 'SUPERVISOR') {
+          return NextResponse.json(
+            { error: 'Acción restringida: el Supervisor no tiene permisos para ocultar o archivar campañas.' },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     const updated = await prisma.campaign.update({
       where: { id },
@@ -38,6 +53,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    const cookieStore = cookies();
+    const sessionUserId = cookieStore.get('crm_user_id')?.value;
+    if (sessionUserId) {
+      const requester = await prisma.user.findUnique({ where: { id: sessionUserId } });
+      if (requester && requester.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Acción restringida: solo un Administrador puede eliminar campañas.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Instead of hard delete if there are sales, we can archive it
     const salesCount = await prisma.sale.count({
       where: { campaignId: id },

@@ -22,7 +22,7 @@ export interface User {
   cedula?: string;
   name: string;
   email: string;
-  role: 'ADMIN' | 'ASESOR' | 'BACKOFFICE';
+  role: 'ADMIN' | 'ASESOR' | 'BACKOFFICE' | 'SUPERVISOR';
   active?: boolean;
   mustChangePassword?: boolean;
   createdAt?: string;
@@ -86,6 +86,8 @@ export default function Navbar({
     switch (role) {
       case 'ADMIN':
         return { label: 'Gerencia', color: 'bg-purple-50 text-purple-700 border-purple-200' };
+      case 'SUPERVISOR':
+        return { label: 'Supervisor', color: 'bg-blue-50 text-blue-700 border-blue-200' };
       case 'BACKOFFICE':
         return { label: 'Back Office', color: 'bg-amber-50 text-amber-700 border-amber-200' };
       case 'ASESOR':
@@ -97,7 +99,9 @@ export default function Navbar({
   const roleInfo = getRoleBadge(currentUser.role);
   const isAdvisor = currentUser.role === 'ASESOR';
   const isBackoffice = currentUser.role === 'BACKOFFICE';
+  const isSupervisor = currentUser.role === 'SUPERVISOR';
   const isAdmin = currentUser.role === 'ADMIN';
+  const canManageAll = isAdmin || isSupervisor;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
@@ -150,7 +154,7 @@ export default function Navbar({
 
           {/* Acciones y Usuario */}
           <div className="flex items-center space-x-3">
-            {isAdmin && (
+            {canManageAll && (
               <button
                 onClick={handleQuickRealtimeExcel}
                 disabled={isDownloadingExcel}
@@ -165,7 +169,7 @@ export default function Navbar({
               </button>
             )}
 
-            {(isAdvisor || isAdmin) && (
+            {(isAdvisor || canManageAll) && (
               <button
                 onClick={onOpenNewSale}
                 className="hidden md:inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
@@ -237,7 +241,7 @@ export default function Navbar({
             <span>Campañas</span>
           </button>
 
-          {(isAdvisor || isAdmin) && (
+          {(isAdvisor || canManageAll) && (
             <button
               onClick={() => setActiveTab('sales')}
               className={`py-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 flex items-center space-x-2 transition whitespace-nowrap ${
@@ -259,7 +263,7 @@ export default function Navbar({
             </button>
           )}
 
-          {(isBackoffice || isAdmin) && (
+          {(isBackoffice || canManageAll) && (
             <button
               onClick={() => setActiveTab('backoffice')}
               className={`py-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 flex items-center space-x-2 transition whitespace-nowrap ${
@@ -278,7 +282,7 @@ export default function Navbar({
             </button>
           )}
 
-          {isAdmin && (
+          {canManageAll && (
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`py-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 flex items-center space-x-2 transition whitespace-nowrap ${
@@ -292,7 +296,7 @@ export default function Navbar({
             </button>
           )}
 
-          {isAdmin && (
+          {canManageAll && (
             <button
               onClick={() => setActiveTab('users')}
               className={`py-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 flex items-center space-x-2 transition whitespace-nowrap ${

@@ -6,6 +6,7 @@ import {
   Edit,
   Users as UsersIcon,
   Shield,
+  ShieldCheck,
   FileCheck2,
   Briefcase,
   UserCheck,
@@ -47,7 +48,7 @@ export default function UsersView({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('123456');
   const [showCreatePassword, setShowCreatePassword] = useState(false);
-  const [role, setRole] = useState<'ADMIN' | 'ASESOR' | 'BACKOFFICE'>('ASESOR');
+  const [role, setRole] = useState<'ADMIN' | 'ASESOR' | 'BACKOFFICE' | 'SUPERVISOR'>('ASESOR');
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -135,11 +136,15 @@ export default function UsersView({
     setIsUpdatingCampaigns(true);
     setEditErrorMsg(null);
     try {
+      const isSuperAdmin = currentUser.role === 'ADMIN';
       const payload: Record<string, any> = {
         cedula: editCedula,
         name: editName.trim(),
         email: editEmail.trim().toLowerCase().split('@')[0].replace(/\s+/g, ''),
-        active: editingUser.id === currentUser.id ? true : editActive,
+        // Solo el Administrador puede inactivar o reactivar; el supervisor conserva el estado actual
+        active: isSuperAdmin
+          ? (editingUser.id === currentUser.id ? true : editActive)
+          : (editingUser.active !== false),
         assignedCampaignIds: editCampaignIds,
       };
       if (editPassword.trim().length > 0) {
@@ -210,6 +215,12 @@ export default function UsersView({
           label: 'Administrador',
           color: 'bg-purple-100 text-purple-800 border-purple-200',
           icon: Shield,
+        };
+      case 'SUPERVISOR':
+        return {
+          label: 'Supervisor',
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          icon: ShieldCheck,
         };
       case 'BACKOFFICE':
         return {
@@ -411,7 +422,7 @@ export default function UsersView({
                         )}
                       </td>
                       <td className="py-3.5 px-4">
-                        {u.role === 'ADMIN' ? (
+                        {u.role === 'ADMIN' || u.role === 'SUPERVISOR' ? (
                           <span className="text-purple-700 font-bold text-[11px]">Todas</span>
                         ) : assigned.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
@@ -434,7 +445,7 @@ export default function UsersView({
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center justify-end space-x-1.5">
-                          {!isSelf && (
+                          {currentUser.role === 'ADMIN' && !isSelf && (
                             <button
                               type="button"
                               disabled={togglingUserId === u.id}
@@ -559,8 +570,8 @@ export default function UsersView({
                 </div>
               </div>
 
-              {/* Estado Activo / Inactivo */}
-              {editingUser.id !== currentUser.id && (
+              {/* Estado Activo / Inactivo: Solo el Administrador puede inactivar o reactivar */}
+              {currentUser.role === 'ADMIN' && editingUser.id !== currentUser.id && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Estado de acceso
@@ -594,7 +605,7 @@ export default function UsersView({
                 </div>
               )}
 
-              {editingUser.role !== 'ADMIN' && (
+              {editingUser.role !== 'ADMIN' && editingUser.role !== 'SUPERVISOR' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Campañas asignadas
@@ -733,11 +744,12 @@ export default function UsersView({
                 >
                   <option value="ASESOR">Consultor de Ventas</option>
                   <option value="BACKOFFICE">Back Office</option>
+                  <option value="SUPERVISOR">Supervisor</option>
                   <option value="ADMIN">Administrador</option>
                 </select>
               </div>
 
-              {role !== 'ADMIN' && (
+              {role !== 'ADMIN' && role !== 'SUPERVISOR' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Campañas asignadas

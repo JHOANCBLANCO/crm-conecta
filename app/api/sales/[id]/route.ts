@@ -77,7 +77,11 @@ export async function PATCH(
       ? await prisma.user.findUnique({ where: { id: userId } })
       : null;
     const effectiveUserName = userName || userRecord?.name || 'Back Office';
-    const isAdmin = userRole === 'ADMIN' || userRecord?.role === 'ADMIN';
+    const isAdmin =
+      userRole === 'ADMIN' ||
+      userRole === 'SUPERVISOR' ||
+      userRecord?.role === 'ADMIN' ||
+      userRecord?.role === 'SUPERVISOR';
 
     // Verificación de bloqueo concurrente (ningún otro Back Office puede tocarla si ya está tomada)
     if (

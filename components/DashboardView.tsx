@@ -71,7 +71,7 @@ export default function DashboardView({
   const [periodBTo, setPeriodBTo] = useState(yesterdayStr);
 
   const advisors = useMemo(() => {
-    return users.filter((u) => u.role === 'ASESOR' || u.role === 'ADMIN');
+    return users.filter((u) => u.role === 'ASESOR' || u.role === 'ADMIN' || u.role === 'SUPERVISOR');
   }, [users]);
 
   const availableChannels = useMemo(() => {

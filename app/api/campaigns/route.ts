@@ -16,8 +16,8 @@ export async function GET(req: Request) {
         include: { assignedCampaigns: { select: { id: true } } },
       });
 
-      // Si no es admin, limitar a las campañas que tiene asignadas
-      if (user && user.role !== 'ADMIN') {
+      // Si no es admin ni supervisor, limitar a las campañas que tiene asignadas
+      if (user && user.role !== 'ADMIN' && user.role !== 'SUPERVISOR') {
         userAssignedCampaignIds = user.assignedCampaigns.map((c) => c.id);
       }
     }

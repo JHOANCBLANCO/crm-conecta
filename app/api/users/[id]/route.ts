@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
 
 export async function PATCH(
   req: Request,
@@ -43,7 +44,20 @@ export async function PATCH(
       data.mustChangePassword = body.mustChangePassword;
     }
     if (role) data.role = role;
-    if (typeof active === 'boolean') data.active = active;
+    if (typeof active === 'boolean') {
+      const cookieStore = cookies();
+      const sessionUserId = cookieStore.get('crm_user_id')?.value;
+      if (sessionUserId) {
+        const requester = await prisma.user.findUnique({ where: { id: sessionUserId } });
+        if (requester && requester.role === 'SUPERVISOR') {
+          return NextResponse.json(
+            { error: 'Acción restringida: el Supervisor no tiene permisos para inactivar o reactivar usuarios.' },
+            { status: 403 }
+          );
+        }
+      }
+      data.active = active;
+    }
 
     if (Array.isArray(assignedCampaignIds)) {
       data.assignedCampaigns = {
@@ -73,6 +87,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    const cookieStore = cookies();
+    const sessionUserId = cookieStore.get('crm_user_id')?.value;
+    if (sessionUserId) {
+      const requester = await prisma.user.findUnique({ where: { id: sessionUserId } });
+      if (requester && requester.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Acción restringida: solo un Administrador puede desactivar o eliminar usuarios.' },
+          { status: 403 }
+        );
+      }
+    }
+
     await prisma.user.update({
       where: { id },
       data: { active: false },

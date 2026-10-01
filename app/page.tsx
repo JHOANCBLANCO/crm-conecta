@@ -152,7 +152,7 @@ export default function Home() {
 
   const userAllowedCampaigns = useMemo(() => {
     if (!currentUser) return [];
-    if (currentUser.role === 'ADMIN') return campaigns;
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR') return campaigns;
     const assignedIds = currentUser.assignedCampaigns?.map((c) => c.id) || [];
     return campaigns.filter((c) => assignedIds.includes(c.id) && !c.isArchived);
   }, [campaigns, currentUser]);
@@ -167,7 +167,7 @@ export default function Home() {
     if (!currentUser) return 0;
     return sales.filter(
       (s) =>
-        (currentUser.role === 'ADMIN' || s.advisorId === currentUser.id) &&
+        (currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR' || s.advisorId === currentUser.id) &&
         (s.stage === 'DEVOLUCION' || s.stage === 'DEVUELTO')
     ).length;
   }, [sales, currentUser]);
@@ -215,7 +215,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'sales' && (currentUser.role === 'ASESOR' || currentUser.role === 'ADMIN') && (
+        {activeTab === 'sales' && (currentUser.role === 'ASESOR' || currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR') && (
           <AdvisorSalesView
             sales={sales}
             currentUserId={currentUser.id}
@@ -226,18 +226,18 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'backoffice' && (currentUser.role === 'BACKOFFICE' || currentUser.role === 'ADMIN') && (
+        {activeTab === 'backoffice' && (currentUser.role === 'BACKOFFICE' || currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR') && (
           <BackofficeView
             sales={sales}
             currentUserId={currentUser.id}
             currentUserName={currentUser.name}
             currentUserRole={currentUser.role}
-            assignedCampaignIds={currentUser.role === 'ADMIN' ? undefined : assignedCampaignIds}
+            assignedCampaignIds={(currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR') ? undefined : assignedCampaignIds}
             onRefresh={loadData}
           />
         )}
 
-        {activeTab === 'dashboard' && currentUser.role === 'ADMIN' && (
+        {activeTab === 'dashboard' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR') && (
           <DashboardView
             sales={sales}
             campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, color: c.color }))}
@@ -246,7 +246,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'users' && currentUser.role === 'ADMIN' && (
+        {activeTab === 'users' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPERVISOR') && (
           <UsersView
             users={users}
             campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, color: c.color }))}

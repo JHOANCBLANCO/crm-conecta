@@ -61,6 +61,8 @@ export default function CampaignsView({
   onOpenSaleModalWithPlan,
 }: CampaignsViewProps) {
   const isAdmin = currentUserRole === 'ADMIN';
+  const isSupervisor = currentUserRole === 'SUPERVISOR';
+  const canManageCampaigns = isAdmin || isSupervisor;
   const isAdvisor = currentUserRole === 'ASESOR';
 
   const [showArchived, setShowArchived] = useState(false);
@@ -79,7 +81,7 @@ export default function CampaignsView({
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Estados para eliminación de planes con confirmación por contraseña
+  // Estados para eliminación de planes con confirmación por contraseña (exclusivo Administrador)
   const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
   const [deletePassword, setDeletePassword] = useState('');
   const [showDeletePassword, setShowDeletePassword] = useState(false);
@@ -87,9 +89,9 @@ export default function CampaignsView({
   const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
 
   // El asesor solo puede ver campañas activas (nunca ocultas).
-  // El administrador puede ver ocultas si activa el filtro o si las busca.
+  // El administrador y supervisor pueden ver ocultas si activan el filtro o si las buscan.
   const filteredCampaigns = campaigns.filter((c) => {
-    if (!isAdmin && c.isArchived) {
+    if (!canManageCampaigns && c.isArchived) {
       return false;
     }
     if (searchQuery.trim().length > 0) {
@@ -98,7 +100,7 @@ export default function CampaignsView({
         (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
-    if (!isAdmin || !showArchived) {
+    if (!canManageCampaigns || !showArchived) {
       return !c.isArchived;
     }
     return true;
@@ -255,8 +257,8 @@ export default function CampaignsView({
           <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Campañas</h1>
         </div>
 
-        {/* Controles exclusivos del Administrador */}
-        {isAdmin && (
+        {/* Controles de Administrador y Supervisor */}
+        {canManageCampaigns && (
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center space-x-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200/70 px-3.5 py-2 rounded-xl cursor-pointer transition select-none">
               <input
@@ -378,7 +380,7 @@ export default function CampaignsView({
                     className={`w-4 h-4 transition-transform ${isSelected ? 'rotate-90' : ''}`}
                   />
                 </span>
-                {(isAdvisor || isAdmin) && (
+                {(isAdvisor || canManageCampaigns) && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -419,7 +421,7 @@ export default function CampaignsView({
             </div>
 
             <div className="flex items-center space-x-2">
-              {isAdmin && (
+              {canManageCampaigns && (
                 <button
                   onClick={() => setIsAddPlanOpen(true)}
                   className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition"
@@ -480,7 +482,7 @@ export default function CampaignsView({
                     </div>
                   </div>
 
-                  {(isAdvisor || isAdmin) && (
+                  {(isAdvisor || canManageCampaigns) && (
                     <button
                       onClick={() => onOpenSaleModalWithPlan(selectedCampaign.id, plan.id)}
                       className="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-2xs"
@@ -501,7 +503,7 @@ export default function CampaignsView({
       )}
 
       {/* Modal: Crear Campaña */}
-      {isCreateCampaignOpen && isAdmin && (
+      {isCreateCampaignOpen && canManageCampaigns && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
             <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
@@ -589,7 +591,7 @@ export default function CampaignsView({
       )}
 
       {/* Modal: Agregar Plan */}
-      {isAddPlanOpen && selectedCampaign && isAdmin && (
+      {isAddPlanOpen && selectedCampaign && canManageCampaigns && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
             <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
