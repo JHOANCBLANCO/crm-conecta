@@ -24,6 +24,7 @@ export interface User {
   email: string;
   role: 'ADMIN' | 'ASESOR' | 'BACKOFFICE';
   active?: boolean;
+  mustChangePassword?: boolean;
   createdAt?: string;
   assignedCampaigns?: Array<{ id: string; name: string; color: string }>;
 }
@@ -37,6 +38,7 @@ interface NavbarProps {
   campaignSearch: string;
   setCampaignSearch: (search: string) => void;
   pendingBackofficeCount: number;
+  returnedSalesCount?: number;
   onOpenNewSale: () => void;
 }
 
@@ -47,6 +49,7 @@ export default function Navbar({
   campaignSearch,
   setCampaignSearch,
   pendingBackofficeCount,
+  returnedSalesCount = 0,
   onOpenNewSale,
 }: NavbarProps) {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -98,7 +101,7 @@ export default function Navbar({
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={`mx-auto px-4 sm:px-6 lg:px-8 transition-all ${activeTab === 'backoffice' ? 'w-full max-w-none' : 'max-w-7xl'}`}>
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div
@@ -245,6 +248,14 @@ export default function Navbar({
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Mis Ventas</span>
+              {(returnedSalesCount || 0) > 0 && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse shadow-xs flex items-center space-x-1"
+                  title="Tienes ventas en devolución devueltas por Back Office"
+                >
+                  <span>{returnedSalesCount} {returnedSalesCount === 1 ? 'devuelta' : 'devueltas'}</span>
+                </span>
+              )}
             </button>
           )}
 

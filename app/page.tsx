@@ -9,6 +9,7 @@ import AdvisorSalesView from '@/components/AdvisorSalesView';
 import DashboardView from '@/components/DashboardView';
 import UsersView from '@/components/UsersView';
 import SaleModal from '@/components/SaleModal';
+import ForcePasswordChangeModal from '@/components/ForcePasswordChangeModal';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
@@ -162,6 +163,15 @@ export default function Home() {
 
   const pendingBackofficeCount = sales.filter((s) => s.stage === 'PENDIENTE_BACKOFFICE').length;
 
+  const returnedSalesCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return sales.filter(
+      (s) =>
+        (currentUser.role === 'ADMIN' || s.advisorId === currentUser.id) &&
+        (s.stage === 'DEVOLUCION' || s.stage === 'DEVUELTO')
+    ).length;
+  }, [sales, currentUser]);
+
   if (isLoading || !currentUser) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
@@ -182,10 +192,17 @@ export default function Home() {
         campaignSearch={campaignSearch}
         setCampaignSearch={setCampaignSearch}
         pendingBackofficeCount={pendingBackofficeCount}
+        returnedSalesCount={returnedSalesCount}
         onOpenNewSale={handleOpenGenericNewSale}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main
+        className={`flex-1 w-full mx-auto py-6 transition-all ${
+          activeTab === 'backoffice'
+            ? 'w-full max-w-none px-4 sm:px-6 lg:px-8'
+            : 'max-w-7xl px-4 sm:px-6 lg:px-8'
+        }`}
+      >
         {activeTab === 'campaigns' && (
           <CampaignsView
             campaigns={userAllowedCampaigns}
@@ -248,6 +265,21 @@ export default function Home() {
           onSaleCreated={loadData}
           initialCampaignId={modalInitialCampaignId}
           initialPlanId={modalInitialPlanId}
+        />
+      )}
+
+      {currentUser && Boolean(currentUser.mustChangePassword) && (
+        <ForcePasswordChangeModal
+          isOpen={true}
+          currentUser={currentUser}
+          onSuccess={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            setUsers((prev) =>
+              prev.map((u) =>
+                u.id === updatedUser.id ? { ...u, mustChangePassword: false } : u
+              )
+            );
+          }}
         />
       )}
 

@@ -32,6 +32,7 @@ export async function GET() {
       email: user.email,
       role: user.role,
       active: user.active,
+      mustChangePassword: Boolean((user as any).mustChangePassword),
       createdAt: user.createdAt,
       assignedCampaigns: user.assignedCampaigns,
     };

@@ -611,16 +611,16 @@ export default function BackofficeView({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs table-fixed">
               <thead className="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
                 <tr>
-                  <th className="py-3.5 px-4">Cliente / Campaña</th>
-                  <th className="py-3.5 px-4">Consultor</th>
-                  <th className="py-3.5 px-4">Estado / Radicado</th>
-                  <th className="py-3.5 px-4">Fechas</th>
-                  <th className="py-3.5 px-4">Back Office</th>
-                  <th className="py-3.5 px-4 text-center">Documentos</th>
-                  <th className="py-3.5 px-4 text-right">Gestión</th>
+                  <th className="py-3.5 px-4 w-[24%]">Cliente / Campaña</th>
+                  <th className="py-3.5 px-4 w-[14%]">Consultor</th>
+                  <th className="py-3.5 px-4 w-[19%]">Estado / Radicado</th>
+                  <th className="py-3.5 px-4 w-[16%]">Fechas</th>
+                  <th className="py-3.5 px-4 w-[13%]">Back Office</th>
+                  <th className="py-3.5 px-3 text-center w-[7%]">Soportes</th>
+                  <th className="py-3.5 px-4 text-right w-[7%]">Gestión</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -643,11 +643,13 @@ export default function BackofficeView({
                       }`}
                     >
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900">{sale.clientName}</div>
+                        <div className="font-bold text-slate-900 truncate" title={sale.clientName}>
+                          {sale.clientName}
+                        </div>
                         <div className="text-[11px] font-mono text-slate-500">
                           {sale.documentType || 'Cédula'}: {sale.clientCedula}
                         </div>
-                        <div className="mt-1 flex items-center space-x-1.5">
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <span
                             className="px-2 py-0.5 rounded text-[10px] font-bold text-white"
                             style={{ backgroundColor: sale.campaign.color || '#0284c7' }}
@@ -660,8 +662,10 @@ export default function BackofficeView({
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-semibold text-slate-800">{sale.advisor.name}</div>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-800 truncate" title={sale.advisor.name}>
+                          {sale.advisor.name}
+                        </div>
                         <div className="text-[11px] font-mono text-slate-400">
                           C.C. {sale.advisor.cedula || '—'}
                         </div>
@@ -677,7 +681,7 @@ export default function BackofficeView({
                         </div>
                         {(sale.backofficeObservation || sale.returnReason) && (
                           <p
-                            className="text-[11px] text-slate-500 max-w-[180px] truncate mt-0.5"
+                            className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 break-words"
                             title={sale.backofficeObservation || sale.returnReason || ''}
                           >
                             {sale.backofficeObservation || sale.returnReason}
@@ -685,11 +689,13 @@ export default function BackofficeView({
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 whitespace-nowrap text-[11px] text-slate-600 space-y-0.5">
-                        <div>Preact: {sale.preactivationDate || '—'}</div>
-                        <div>SIM: {sale.simSentDate || '—'}</div>
-                        <div>Act: {sale.activationDate || '—'}</div>
-                        <div>Mes: {sale.activationMonth || '—'}</div>
+                      <td className="py-3.5 px-4 text-[11px] text-slate-600">
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                          <div>Pre: <span className="font-semibold text-slate-800">{sale.preactivationDate || '—'}</span></div>
+                          <div>SIM: <span className="font-semibold text-slate-800">{sale.simSentDate || '—'}</span></div>
+                          <div>Act: <span className="font-semibold text-slate-800">{sale.activationDate || '—'}</span></div>
+                          <div>Mes: <span className="font-semibold text-slate-800">{sale.activationMonth || '—'}</span></div>
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 whitespace-nowrap">

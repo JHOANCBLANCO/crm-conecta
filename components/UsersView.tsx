@@ -13,6 +13,7 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  Search,
 } from 'lucide-react';
 import { formatDate, generateUsername } from '@/lib/utils';
 import { User } from './Navbar';
@@ -38,6 +39,7 @@ export default function UsersView({
   onRefresh,
 }: UsersViewProps) {
   const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE' | 'ALL'>('ACTIVE');
+  const [searchCedula, setSearchCedula] = useState('');
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [cedula, setCedula] = useState('');
@@ -75,13 +77,18 @@ export default function UsersView({
   );
 
   const filteredUsers = useMemo(() => {
+    const cleanSearch = searchCedula.trim().replace(/\D/g, '');
     return users.filter((u) => {
       const isUserActive = u.active !== false;
-      if (statusFilter === 'ACTIVE') return isUserActive;
-      if (statusFilter === 'INACTIVE') return !isUserActive;
+      if (statusFilter === 'ACTIVE' && !isUserActive) return false;
+      if (statusFilter === 'INACTIVE' && isUserActive) return false;
+      if (cleanSearch.length > 0) {
+        const uCedula = (u.cedula || '').replace(/\D/g, '');
+        if (!uCedula.includes(cleanSearch)) return false;
+      }
       return true;
     });
-  }, [users, statusFilter]);
+  }, [users, statusFilter, searchCedula]);
 
   const handleNameChange = (newName: string) => {
     setName(newName);
@@ -270,13 +277,39 @@ export default function UsersView({
           </div>
         </div>
 
-        <button
-          onClick={() => setIsCreateOpen(true)}
-          className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-xs transition self-start sm:self-center"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Nuevo Usuario</span>
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          {/* Buscador exclusivo por número de cédula */}
+          <div className="relative w-full sm:w-60">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={searchCedula}
+              onChange={(e) => setSearchCedula(e.target.value.replace(/\D/g, ''))}
+              placeholder="Buscar por cédula..."
+              className="w-full pl-9 pr-7 py-2 bg-slate-100 hover:bg-slate-100/90 focus:bg-white text-xs font-mono font-medium text-slate-800 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 transition placeholder:text-slate-400 placeholder:font-sans"
+            />
+            {searchCedula && (
+              <button
+                type="button"
+                onClick={() => setSearchCedula('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs bg-slate-200/80 rounded-full w-4 h-4 flex items-center justify-center font-bold"
+                title="Limpiar búsqueda"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Nuevo Usuario</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-xs border border-slate-200/90 overflow-hidden">
@@ -297,8 +330,26 @@ export default function UsersView({
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
-                    No hay usuarios en esta vista.
+                  <td colSpan={8} className="py-10 text-center text-slate-400 text-xs">
+                    {searchCedula.trim() ? (
+                      <div className="space-y-1.5">
+                        <p className="font-bold text-slate-700">
+                          No se encontraron usuarios con la cédula &quot;{searchCedula}&quot;
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Verifica el número o cambia la pestaña entre Activos, Inactivos o Todos.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSearchCedula('')}
+                          className="mt-2 inline-block px-3 py-1 bg-slate-100 hover:bg-slate-200 text-sky-700 font-bold rounded-lg text-xs transition"
+                        >
+                          Limpiar filtro de cédula
+                        </button>
+                      </div>
+                    ) : (
+                      'No hay usuarios en esta vista.'
+                    )}
                   </td>
                 </tr>
               ) : (

@@ -120,6 +120,11 @@ export default function AdvisorSalesView({
       : sales;
   }, [sales, currentUserRole, currentUserId]);
 
+  // Bandeja de devoluciones global del asesor: no se limita por fecha para nunca perder una solicitud devuelta
+  const allMyReturns = useMemo(() => {
+    return mySales.filter((s) => s.stage === 'DEVOLUCION' || s.stage === 'DEVUELTO');
+  }, [mySales]);
+
   const periodFilteredSales = useMemo(() => {
     const today = new Date();
     const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
@@ -150,17 +155,17 @@ export default function AdvisorSalesView({
   const activoCount = periodFilteredSales.filter(
     (s) => s.stage === 'ACTIVO' || s.stage === 'APROBADO'
   ).length;
-  const devolucionCount = periodFilteredSales.filter(
-    (s) => s.stage === 'DEVOLUCION' || s.stage === 'DEVUELTO'
-  ).length;
+  // Conteo total de devoluciones para que la bandeja del asesor las reporte de inmediato
+  const devolucionCount = allMyReturns.length;
 
   const displayedSales = useMemo(() => {
-    return periodFilteredSales.filter((s) => {
-      if (filterStage !== 'ALL') {
+    // Si el usuario selecciona la pestaña de Devolución, mostramos TODAS sus solicitudes devueltas (bandeja directa)
+    const baseList = filterStage === 'DEVOLUCION' ? allMyReturns : periodFilteredSales;
+
+    return baseList.filter((s) => {
+      if (filterStage !== 'ALL' && filterStage !== 'DEVOLUCION') {
         if (filterStage === 'ACTIVO') {
           if (s.stage !== 'ACTIVO' && s.stage !== 'APROBADO') return false;
-        } else if (filterStage === 'DEVOLUCION') {
-          if (s.stage !== 'DEVOLUCION' && s.stage !== 'DEVUELTO') return false;
         } else if (s.stage !== filterStage) {
           return false;
         }
@@ -178,7 +183,7 @@ export default function AdvisorSalesView({
       }
       return true;
     });
-  }, [periodFilteredSales, filterStage, searchQuery]);
+  }, [periodFilteredSales, allMyReturns, filterStage, searchQuery]);
 
   const handleResubmitUpload = async (file: File, docType: 'cedula' | 'utility') => {
     setIsUploading(true);
@@ -392,22 +397,44 @@ export default function AdvisorSalesView({
         </div>
       </div>
 
-      {/* Aviso de Ventas en Devolución */}
+      {/* Bandeja de Devoluciones del Asesor */}
       {devolucionCount > 0 && filterStage !== 'DEVOLUCION' && (
-        <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between">
+        <div className="p-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md shadow-orange-500/20">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-orange-100 rounded-xl text-orange-600">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl text-white">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
             </div>
-            <p className="text-xs font-bold text-orange-950">
-              {devolucionCount} solicitud(es) en devolución
-            </p>
+            <div>
+              <p className="text-sm font-black tracking-tight">
+                Bandeja de Devoluciones: {devolucionCount} solicitud(es) devuelta(s) por Back Office
+              </p>
+              <p className="text-xs text-orange-100">
+                Back Office devolvió estas solicitudes por inconsistencias o soportes pendientes. Debes subsanarlas para continuar su trámite.
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setFilterStage('DEVOLUCION')}
-            className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition"
+            className="px-4 py-2 bg-white hover:bg-orange-50 text-orange-800 text-xs font-black rounded-xl transition shadow-xs whitespace-nowrap self-start sm:self-center cursor-pointer"
           >
-            Ver devoluciones
+            Abrir Bandeja ({devolucionCount})
+          </button>
+        </div>
+      )}
+
+      {filterStage === 'DEVOLUCION' && (
+        <div className="p-3.5 bg-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between text-xs">
+          <div className="flex items-center space-x-2 text-orange-950">
+            <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+            <span>
+              Mostrando <strong>Bandeja de Devoluciones</strong> ({displayedSales.length} solicitudes). Revisa la causa indicada por Back Office y presiona <strong>Subsanar</strong> para reenviar.
+            </span>
+          </div>
+          <button
+            onClick={() => setFilterStage('ALL')}
+            className="text-xs font-bold text-orange-700 hover:text-orange-900 underline ml-3 whitespace-nowrap cursor-pointer"
+          >
+            Ver todas las ventas
           </button>
         </div>
       )}
@@ -445,8 +472,17 @@ export default function AdvisorSalesView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayedSales.map((sale) => (
-                <tr key={sale.id} className="hover:bg-slate-50/80 transition">
+              {displayedSales.map((sale) => {
+                const isReturned = sale.stage === 'DEVOLUCION' || sale.stage === 'DEVUELTO';
+                return (
+                <tr
+                  key={sale.id}
+                  className={`transition ${
+                    isReturned
+                      ? 'bg-orange-50/70 border-l-4 border-l-orange-500 hover:bg-orange-100/60'
+                      : 'hover:bg-slate-50/80'
+                  }`}
+                >
                   <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
                     {formatDate(sale.createdAt)}
                   </td>
@@ -530,7 +566,8 @@ export default function AdvisorSalesView({
                     )}
                   </td>
                 </tr>
-              ))}
+              );
+            })}
               {displayedSales.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-xs text-slate-400">

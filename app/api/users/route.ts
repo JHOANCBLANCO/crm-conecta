@@ -2,8 +2,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateUsername } from '@/lib/utils';
 
+async function ensureUserColumns() {
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "User" ADD COLUMN "mustChangePassword" BOOLEAN DEFAULT 0;`
+    );
+  } catch (e) {
+    // Columna ya existe
+  }
+}
+
 export async function GET() {
   try {
+    await ensureUserColumns();
     const users = await prisma.user.findMany({
       include: {
         assignedCampaigns: {
@@ -20,6 +31,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    await ensureUserColumns();
     const body = await req.json();
     const { cedula, name, email, password, role, assignedCampaignIds } = body;
 
@@ -47,6 +59,7 @@ export async function POST(req: Request) {
         email: finalUsername,
         password: password || '123456',
         role,
+        mustChangePassword: true, // Debe cambiar su clave en el primer acceso
         ...(Array.isArray(assignedCampaignIds) && assignedCampaignIds.length > 0
           ? {
               assignedCampaigns: {

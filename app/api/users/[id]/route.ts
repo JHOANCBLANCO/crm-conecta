@@ -31,6 +31,16 @@ export async function PATCH(
     }
     if (typeof password === 'string' && password.trim().length > 0) {
       data.password = password.trim();
+      // Si el usuario mismo está cambiando su contraseña al ingresar, se quita la bandera;
+      // si el admin la está cambiando o reseteando, se activa para que el usuario la cambie en su primer acceso
+      if (body.action === 'SELF_CHANGE_PASSWORD') {
+        data.mustChangePassword = false;
+      } else {
+        data.mustChangePassword = true;
+      }
+    }
+    if (typeof body.mustChangePassword === 'boolean') {
+      data.mustChangePassword = body.mustChangePassword;
     }
     if (role) data.role = role;
     if (typeof active === 'boolean') data.active = active;

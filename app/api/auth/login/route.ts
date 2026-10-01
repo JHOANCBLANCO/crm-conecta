@@ -76,6 +76,7 @@ export async function POST(req: Request) {
       name: user.name,
       email: user.email,
       role: user.role,
+      mustChangePassword: Boolean((user as any).mustChangePassword),
       createdAt: user.createdAt,
       assignedCampaigns: user.assignedCampaigns,
     };
