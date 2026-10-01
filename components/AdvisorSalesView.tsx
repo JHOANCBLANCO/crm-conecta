@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShoppingBag,
   Plus,
@@ -13,6 +13,8 @@ import {
   Home,
   IdCard,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DocumentViewerModal from './DocumentViewerModal';
@@ -62,8 +64,16 @@ export default function AdvisorSalesView({
       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
     ];
 
-    const startY = userStartDate.getFullYear();
-    const startM = userStartDate.getMonth();
+    let earliestDate = userStartDate;
+    sales.forEach((s) => {
+      const d = new Date(s.createdAt);
+      if (!isNaN(d.getTime()) && d < earliestDate) {
+        earliestDate = d;
+      }
+    });
+
+    const startY = earliestDate.getFullYear();
+    const startM = earliestDate.getMonth();
 
     const endY = now.getFullYear();
     const endM = now.getMonth();
@@ -92,9 +102,9 @@ export default function AdvisorSalesView({
     }
 
     return list;
-  }, [userStartDate, currentMonth, currentYear]);
+  }, [userStartDate, currentMonth, currentYear, sales, now]);
 
-  const [selectedPeriodMode, setSelectedPeriodMode] = useState<'MONTH' | 'TODAY' | 'YESTERDAY'>('MONTH');
+  const [selectedPeriodMode, setSelectedPeriodMode] = useState<'MONTH' | 'TODAY' | 'YESTERDAY' | 'ALL'>('MONTH');
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>(
     `${currentYear}-${currentMonth}`
   );
@@ -134,6 +144,9 @@ export default function AdvisorSalesView({
     }
     if (selectedPeriodMode === 'YESTERDAY') {
       return mySales.filter((s) => isSameDayLocal(new Date(s.createdAt), yesterday));
+    }
+    if (selectedPeriodMode === 'ALL') {
+      return mySales;
     }
 
     const selected = availableMonths.find((m) => m.key === selectedMonthKey) || availableMonths[0];
@@ -184,6 +197,22 @@ export default function AdvisorSalesView({
       return true;
     });
   }, [periodFilteredSales, allMyReturns, filterStage, searchQuery]);
+
+  // Paginación de a 20 registros
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStage, searchQuery, selectedMonthKey, selectedPeriodMode]);
+
+  const totalPages = Math.max(1, Math.ceil(displayedSales.length / PAGE_SIZE));
+  const currentPageSafe = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedSales = useMemo(() => {
+    const startIndex = (currentPageSafe - 1) * PAGE_SIZE;
+    return displayedSales.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [displayedSales, currentPageSafe]);
 
   const handleResubmitUpload = async (file: File, docType: 'cedula' | 'utility') => {
     setIsUploading(true);
@@ -301,6 +330,16 @@ export default function AdvisorSalesView({
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
               <button
+                onClick={() => setSelectedPeriodMode('MONTH')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  selectedPeriodMode === 'MONTH'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Mes
+              </button>
+              <button
                 onClick={() => setSelectedPeriodMode('TODAY')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                   selectedPeriodMode === 'TODAY'
@@ -321,14 +360,14 @@ export default function AdvisorSalesView({
                 Ayer
               </button>
               <button
-                onClick={() => setSelectedPeriodMode('MONTH')}
+                onClick={() => setSelectedPeriodMode('ALL')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  selectedPeriodMode === 'MONTH'
+                  selectedPeriodMode === 'ALL'
                     ? 'bg-white text-sky-700 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Mes
+                Histórico
               </button>
             </div>
 
@@ -472,7 +511,7 @@ export default function AdvisorSalesView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayedSales.map((sale) => {
+              {paginatedSales.map((sale) => {
                 const isReturned = sale.stage === 'DEVOLUCION' || sale.stage === 'DEVUELTO';
                 return (
                 <tr
@@ -580,6 +619,49 @@ export default function AdvisorSalesView({
             </tbody>
           </table>
         </div>
+
+        {displayedSales.length > 0 && (
+          <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-slate-500 font-medium">
+              Mostrando <strong className="text-slate-800">{(currentPageSafe - 1) * PAGE_SIZE + 1}</strong> a{' '}
+              <strong className="text-slate-800">
+                {Math.min(currentPageSafe * PAGE_SIZE, displayedSales.length)}
+              </strong>{' '}
+              de <strong className="text-slate-800">{displayedSales.length}</strong> ventas
+              {selectedPeriodMode === 'MONTH' && (
+                <span className="ml-1 text-slate-500">
+                  (Mes: <span className="font-bold text-sky-700">{availableMonths.find((m) => m.key === selectedMonthKey)?.label || 'Actual'}</span>)
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                disabled={currentPageSafe <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-bold text-slate-700 rounded-xl transition shadow-2xs cursor-pointer disabled:cursor-not-allowed flex items-center space-x-1"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Anterior</span>
+              </button>
+
+              <span className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl">
+                Página {currentPageSafe} de {totalPages}
+              </span>
+
+              <button
+                type="button"
+                disabled={currentPageSafe >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-bold text-slate-700 rounded-xl transition shadow-2xs cursor-pointer disabled:cursor-not-allowed flex items-center space-x-1"
+              >
+                <span>Siguiente</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal Subsanar */}

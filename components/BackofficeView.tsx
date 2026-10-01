@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileCheck2,
   CheckCircle,
@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   Calendar,
   Hash,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DocumentViewerModal from './DocumentViewerModal';
@@ -191,6 +193,10 @@ export default function BackofficeView({
   const [isSavingBo, setIsSavingBo] = useState<boolean>(false);
   const [isReleasingBo, setIsReleasingBo] = useState<boolean>(false);
 
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
   const accessibleSales = useMemo(() => {
     if (!assignedCampaignIds || assignedCampaignIds.length === 0) {
       return sales;
@@ -198,22 +204,116 @@ export default function BackofficeView({
     return sales.filter((s) => assignedCampaignIds.includes(s.campaignId));
   }, [sales, assignedCampaignIds]);
 
-  const pendingCount = accessibleSales.filter((s) => s.stage === 'PENDIENTE_BACKOFFICE').length;
-  const preactivoCount = accessibleSales.filter((s) => s.stage === 'PREACTIVO').length;
-  const envioSimCount = accessibleSales.filter((s) => s.stage === 'ENVIO_SIM').length;
-  const activoCount = accessibleSales.filter(
+  const availableMonths = useMemo(() => {
+    const list: Array<{ label: string; year: number; month: number; key: string }> = [];
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+
+    let earliestDate = new Date();
+    accessibleSales.forEach((s) => {
+      const d = new Date(s.createdAt);
+      if (!isNaN(d.getTime()) && d < earliestDate) {
+        earliestDate = d;
+      }
+    });
+
+    const startY = earliestDate.getFullYear();
+    const startM = earliestDate.getMonth();
+
+    const endY = now.getFullYear();
+    const endM = now.getMonth();
+
+    for (let y = endY; y >= startY; y--) {
+      const maxM = y === endY ? endM : 11;
+      const minM = y === startY ? startM : 0;
+
+      for (let m = maxM; m >= minM; m--) {
+        list.push({
+          label: `${monthNames[m]} ${y}`,
+          year: y,
+          month: m,
+          key: `${y}-${m}`,
+        });
+      }
+    }
+
+    if (list.length === 0) {
+      list.push({
+        label: `${monthNames[currentMonth]} ${currentYear}`,
+        year: currentYear,
+        month: currentMonth,
+        key: `${currentYear}-${currentMonth}`,
+      });
+    }
+
+    return list;
+  }, [accessibleSales, currentMonth, currentYear, now]);
+
+  const [selectedPeriodMode, setSelectedPeriodMode] = useState<'MONTH' | 'TODAY' | 'YESTERDAY' | 'ALL'>('MONTH');
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>(
+    `${currentYear}-${currentMonth}`
+  );
+
+  const allReturns = useMemo(() => {
+    return accessibleSales.filter((s) => s.stage === 'DEVOLUCION' || s.stage === 'DEVUELTO');
+  }, [accessibleSales]);
+
+  const periodFilteredSales = useMemo(() => {
+    const today = new Date();
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+
+    if (selectedPeriodMode === 'TODAY') {
+      return accessibleSales.filter((s) => {
+        const d = new Date(s.createdAt);
+        return (
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate()
+        );
+      });
+    }
+    if (selectedPeriodMode === 'YESTERDAY') {
+      return accessibleSales.filter((s) => {
+        const d = new Date(s.createdAt);
+        return (
+          d.getFullYear() === yesterday.getFullYear() &&
+          d.getMonth() === yesterday.getMonth() &&
+          d.getDate() === yesterday.getDate()
+        );
+      });
+    }
+    if (selectedPeriodMode === 'ALL') {
+      return accessibleSales;
+    }
+
+    const selected = availableMonths.find((m) => m.key === selectedMonthKey) || availableMonths[0];
+    if (!selected) return accessibleSales;
+
+    const startDate = new Date(selected.year, selected.month, 1, 0, 0, 0);
+    const endDate = new Date(selected.year, selected.month + 1, 0, 23, 59, 59, 999);
+
+    return accessibleSales.filter((s) => {
+      const d = new Date(s.createdAt);
+      return d >= startDate && d <= endDate;
+    });
+  }, [accessibleSales, availableMonths, selectedMonthKey, selectedPeriodMode]);
+
+  const pendingCount = periodFilteredSales.filter((s) => s.stage === 'PENDIENTE_BACKOFFICE').length;
+  const preactivoCount = periodFilteredSales.filter((s) => s.stage === 'PREACTIVO').length;
+  const envioSimCount = periodFilteredSales.filter((s) => s.stage === 'ENVIO_SIM').length;
+  const activoCount = periodFilteredSales.filter(
     (s) => s.stage === 'ACTIVO' || s.stage === 'APROBADO'
   ).length;
-  const devolucionCount = accessibleSales.filter(
-    (s) => s.stage === 'DEVOLUCION' || s.stage === 'DEVUELTO'
-  ).length;
+  const devolucionCount = allReturns.length;
 
   const myManagedSales = useMemo(
     () =>
-      accessibleSales.filter(
+      periodFilteredSales.filter(
         (s) => s.validatorId === currentUserId || s.backofficeName === currentUserName
       ),
-    [accessibleSales, currentUserId, currentUserName]
+    [periodFilteredSales, currentUserId, currentUserName]
   );
 
   const myActiveSales = myManagedSales.filter(
@@ -226,12 +326,11 @@ export default function BackofficeView({
   );
 
   const displayedSales = useMemo(() => {
-    return accessibleSales.filter((sale) => {
-      if (filterStage !== 'ALL') {
+    const base = filterStage === 'DEVOLUCION' ? allReturns : periodFilteredSales;
+    return base.filter((sale) => {
+      if (filterStage !== 'ALL' && filterStage !== 'DEVOLUCION') {
         if (filterStage === 'ACTIVO') {
           if (sale.stage !== 'ACTIVO' && sale.stage !== 'APROBADO') return false;
-        } else if (filterStage === 'DEVOLUCION') {
-          if (sale.stage !== 'DEVOLUCION' && sale.stage !== 'DEVUELTO') return false;
         } else if (sale.stage !== filterStage) {
           return false;
         }
@@ -251,7 +350,23 @@ export default function BackofficeView({
       }
       return true;
     });
-  }, [accessibleSales, filterStage, searchQuery]);
+  }, [periodFilteredSales, allReturns, filterStage, searchQuery]);
+
+  // Paginación de a 20 registros
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStage, searchQuery, selectedMonthKey, selectedPeriodMode, activeSubTab]);
+
+  const totalPages = Math.max(1, Math.ceil(displayedSales.length / PAGE_SIZE));
+  const currentPageSafe = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedSales = useMemo(() => {
+    const startIndex = (currentPageSafe - 1) * PAGE_SIZE;
+    return displayedSales.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [displayedSales, currentPageSafe]);
 
   const populateManagementModal = (sale: Sale) => {
     setManagingSale(sale);
@@ -459,28 +574,90 @@ export default function BackofficeView({
             </div>
           </div>
 
-          <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
-            <button
-              onClick={() => setActiveSubTab('queue')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                activeSubTab === 'queue'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Solicitudes
-            </button>
-            <button
-              onClick={() => setActiveSubTab('my_dashboard')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeSubTab === 'my_dashboard'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              <span>Mi Resumen</span>
-            </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => setSelectedPeriodMode('MONTH')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  selectedPeriodMode === 'MONTH'
+                    ? 'bg-white text-amber-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Mes
+              </button>
+              <button
+                onClick={() => setSelectedPeriodMode('TODAY')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  selectedPeriodMode === 'TODAY'
+                    ? 'bg-white text-amber-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Hoy
+              </button>
+              <button
+                onClick={() => setSelectedPeriodMode('YESTERDAY')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  selectedPeriodMode === 'YESTERDAY'
+                    ? 'bg-white text-amber-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Ayer
+              </button>
+              <button
+                onClick={() => setSelectedPeriodMode('ALL')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  selectedPeriodMode === 'ALL'
+                    ? 'bg-white text-amber-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Histórico
+              </button>
+            </div>
+
+            {selectedPeriodMode === 'MONTH' && (
+              <div className="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                <Calendar className="w-4 h-4 text-amber-600" />
+                <select
+                  value={selectedMonthKey}
+                  onChange={(e) => setSelectedMonthKey(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  {availableMonths.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => setActiveSubTab('queue')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeSubTab === 'queue'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Solicitudes
+              </button>
+              <button
+                onClick={() => setActiveSubTab('my_dashboard')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 ${
+                  activeSubTab === 'my_dashboard'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" />
+                <span>Mi Resumen</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -556,7 +733,7 @@ export default function BackofficeView({
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 mt-4">
             {[
-              { id: 'ALL', label: 'Todas', count: accessibleSales.length, color: 'text-slate-900' },
+              { id: 'ALL', label: 'Todas', count: periodFilteredSales.length, color: 'text-slate-900' },
               { id: 'PENDIENTE_BACKOFFICE', label: 'En cola', count: pendingCount, color: 'text-amber-600' },
               { id: 'PREACTIVO', label: 'Preactivo', count: preactivoCount, color: 'text-sky-600' },
               { id: 'ENVIO_SIM', label: 'Envío de SIM', count: envioSimCount, color: 'text-purple-600' },
@@ -626,7 +803,7 @@ export default function BackofficeView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {displayedSales.map((sale) => {
+                {paginatedSales.map((sale) => {
                   const isLockedByMe = sale.lockedById === currentUserId;
                   const isLockedByOther =
                     Boolean(sale.lockedById) && sale.lockedById !== currentUserId;
@@ -816,6 +993,55 @@ export default function BackofficeView({
               </tbody>
             </table>
           </div>
+
+          {/* Paginación de a 20 registros */}
+          {totalPages > 1 && (
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+              <div>
+                Mostrando{' '}
+                <span className="font-bold text-slate-800">
+                  {Math.min(displayedSales.length, (currentPageSafe - 1) * PAGE_SIZE + 1)}
+                </span>{' '}
+                a{' '}
+                <span className="font-bold text-slate-800">
+                  {Math.min(displayedSales.length, currentPageSafe * PAGE_SIZE)}
+                </span>{' '}
+                de <span className="font-bold text-slate-800">{displayedSales.length}</span>{' '}
+                solicitudes
+                {selectedPeriodMode === 'MONTH' && (
+                  <span className="ml-1 text-slate-400">
+                    ({availableMonths.find((m) => m.key === selectedMonthKey)?.label})
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  disabled={currentPageSafe <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-bold text-slate-700 rounded-xl transition shadow-2xs cursor-pointer disabled:cursor-not-allowed flex items-center space-x-1"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+
+                <span className="px-2 font-semibold text-slate-600">
+                  Página {currentPageSafe} de {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={currentPageSafe >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-bold text-slate-700 rounded-xl transition shadow-2xs cursor-pointer disabled:cursor-not-allowed flex items-center space-x-1"
+                >
+                  <span>Siguiente</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

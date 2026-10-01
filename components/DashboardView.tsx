@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileSpreadsheet,
   FileText,
@@ -16,6 +16,8 @@ import {
   ArrowDownRight,
   Minus,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatCurrency, formatDateShort } from '@/lib/utils';
 import { generateSalesReportPdf } from '@/lib/exportPdf';
@@ -247,6 +249,31 @@ export default function DashboardView({
         (s.backofficeName && s.backofficeName.toLowerCase().includes(q))
     );
   }, [filteredSales, tableSearch]);
+
+  // Paginación de a 20 registros para la tabla consolidada
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedCampaignId,
+    selectedAdvisorId,
+    selectedChannel,
+    selectedStage,
+    timeFilter,
+    customDateFrom,
+    customDateTo,
+    tableSearch,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(tableDisplaySales.length / PAGE_SIZE));
+  const currentPageSafe = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedSales = useMemo(() => {
+    const startIndex = (currentPageSafe - 1) * PAGE_SIZE;
+    return tableDisplaySales.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [tableDisplaySales, currentPageSafe]);
 
   // Métricas del período filtrado
   const totalSalesCount = filteredSales.length;
@@ -1033,7 +1060,7 @@ export default function DashboardView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {tableDisplaySales.map((sale) => (
+              {paginatedSales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-slate-50/80 transition">
                   <td className="py-3 px-4 whitespace-nowrap text-slate-500">
                     {formatDateShort(sale.createdAt)}
@@ -1115,6 +1142,50 @@ export default function DashboardView({
             </tbody>
           </table>
         </div>
+
+        {/* Paginación de a 20 registros */}
+        {totalPages > 1 && (
+          <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div>
+              Mostrando{' '}
+              <span className="font-bold text-slate-800">
+                {Math.min(tableDisplaySales.length, (currentPageSafe - 1) * PAGE_SIZE + 1)}
+              </span>{' '}
+              a{' '}
+              <span className="font-bold text-slate-800">
+                {Math.min(tableDisplaySales.length, currentPageSafe * PAGE_SIZE)}
+              </span>{' '}
+              de <span className="font-bold text-slate-800">{tableDisplaySales.length}</span>{' '}
+              ventas
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                disabled={currentPageSafe <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-bold text-slate-700 rounded-xl transition shadow-2xs cursor-pointer disabled:cursor-not-allowed flex items-center space-x-1"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Anterior</span>
+              </button>
+
+              <span className="px-2 font-semibold text-slate-600">
+                Página {currentPageSafe} de {totalPages}
+              </span>
+
+              <button
+                type="button"
+                disabled={currentPageSafe >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white text-xs font-bold text-slate-700 rounded-xl transition shadow-2xs cursor-pointer disabled:cursor-not-allowed flex items-center space-x-1"
+              >
+                <span>Siguiente</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {detailsModalSale && (
